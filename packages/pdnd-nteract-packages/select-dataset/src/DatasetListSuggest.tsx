@@ -20,7 +20,7 @@ import { highlightText } from "./highlightUtil";
 import { IDatasetItem } from "../types";
 
 const renderDatasetItem: ItemRenderer<IDatasetItem> = (
-  { name, title }: IDatasetItem,
+  { name }: IDatasetItem,
   { handleClick, modifiers, query }
 ): JSX.Element | null => {
   return modifiers.matchesPredicate ? (
@@ -39,7 +39,7 @@ const renderDatasetItem: ItemRenderer<IDatasetItem> = (
         </a>
       }
       onClick={handleClick}
-      text={highlightText(title, query)}
+      text={highlightText(name, query)}
     />
   ) : null; // try && instead of testcase ? truecase : falsecase
 };
@@ -47,9 +47,9 @@ const renderDatasetItem: ItemRenderer<IDatasetItem> = (
 const filterDatasetItem: ItemPredicate<IDatasetItem> = (
   query: string,
   value: IDatasetItem
-): boolean => value.title.toLowerCase().indexOf(query.toLowerCase()) >= 0;
+): boolean => value.name.toLowerCase().indexOf(query.toLowerCase()) >= 0;
 
-const datasetInputRender = ({ title }: IDatasetItem): string => title;
+const datasetInputRender = ({ name }: IDatasetItem): string => name;
 
 const DatasetSuggest = Suggest.ofType<IDatasetItem>();
 
@@ -125,7 +125,7 @@ const DatasetListSuggest = ({
         // itemListRenderer={itemListProps => <Menu>{renderFilteredItems(itemListProps)}</Menu>}
         itemPredicate={filterDatasetItem}
         inputValueRenderer={datasetInputRender}
-        onItemSelect={({ name }: IDatasetItem) => requestDataset(name)}
+        onItemSelect={({ name , url }: IDatasetItem) => requestDataset({ name , url})}
       />
     </FormGroup>
   </Fragment>

@@ -234,7 +234,10 @@ const requestDatasetEpic = action$ =>
   action$.pipe(
     ofType(DATASET_REQUEST),
     switchMap(({ payload }) =>
-      ajax
+    { 
+      const {name, url} = payload 
+
+    /*  ajax
         .get(
           BASE_API_URI +
             "catalog-manager/v1/public/catalog-ds/getbyname/" +
@@ -250,8 +253,8 @@ const requestDatasetEpic = action$ =>
           map(({ response }) => response),
           map(mappedResponse => fulfillDataset(mappedResponse)),
           catchError(error => of(rejectDataset(error)))
-        )
-    )
+        ) */
+        })
   );
 
 const selectedDatasetOperations = {

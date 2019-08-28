@@ -6,7 +6,8 @@ interface IDatasetItem {
   owner_org?: { name: string };
   privatex?: boolean;
   theme?: string;
-  title: string;
+  title?: string;
+  url: string
 }
 
 interface ISelectDatasetProps {

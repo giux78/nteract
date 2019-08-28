@@ -126,10 +126,11 @@ const datasetListEpic = action$ => action$.pipe(
     switchMap(({ payload }) =>
       ajax
         .post(
-          BASE_API_URI + "dati-gov/v1/public/elasticsearch/search",
+          //BASE_API_URI + "dati-gov/v1/public/elasticsearch/search",
+          "http://localhost:8080/pdnd-openapi/pdnd-nteract/search_ckan",
           JSON.stringify({
             text: payload,
-            index: ["catalog_test"],
+            index: [],
             org: [],
             theme: [],
             date: "",
@@ -145,9 +146,9 @@ const datasetListEpic = action$ => action$.pipe(
         .pipe(
           map(({ response }) =>
             response
-              .filter(({ type }) => type === "catalog_test")
-              .map(({ source }) => ({
-                dcatapit: JSON.parse(source).dcatapit
+              //.filter(({ type }) => type === "catalog_test")
+              .map((obj) => ({
+                dcatapit: obj
               }))
           ),
           map(mappedResponse => fulfillDatasetList(mappedResponse)),
