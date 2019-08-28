@@ -236,7 +236,7 @@ const requestDatasetEpic = action$ =>
     switchMap(({ payload }) =>
     { 
       const {name, url} = payload 
-
+      fulfillDataset(payload)
     /*  ajax
         .get(
           BASE_API_URI +
