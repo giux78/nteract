@@ -132,7 +132,7 @@ val resp = Http("${BASE_API_URI}dataset-manager/v1/dataset/${encodeURIComponent(
 .asString
 val ${
       metacatalog.dcatapit.name
-    }  = ujson.read(resp.body).asInstanceOf[ujson.Js.Arr]
+      }  = ujson.read(resp.body).asInstanceOf[ujson.Js.Arr]
       `;
   } else if (kernelName == "ir") {
     return `options(repr.matrix.max.rows = 10)
@@ -234,27 +234,32 @@ const requestDatasetEpic = action$ =>
   action$.pipe(
     ofType(DATASET_REQUEST),
     switchMap(({ payload }) =>
-    { 
-      const {name, url} = payload 
 
-    /*  ajax
-        .get(
-          BASE_API_URI +
-            "catalog-manager/v1/public/catalog-ds/getbyname/" +
-            payload,
-          {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            Authorization: "Basic " // + basicSecret
-          }
-        )
+      /*  ajax
+          .get(
+            BASE_API_URI +
+              "catalog-manager/v1/public/catalog-ds/getbyname/" +j
+              payload,
+            {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              Authorization: "Basic " // + basicSecret
+            }
+          ) */
+
+      of({})
         .pipe(
-          //  map(({ response }) => response.operational.logical_uri),
-          map(({ response }) => response),
-          map(mappedResponse => fulfillDataset(mappedResponse)),
+          map(() => fulfillDataset({
+            operational: {
+              logical_uri: payload.url
+            },
+            dcatapit: {
+              name: payload.name
+            }
+          })),
           catchError(error => of(rejectDataset(error)))
-        ) */
-        })
+        )
+    )
   );
 
 const selectedDatasetOperations = {
