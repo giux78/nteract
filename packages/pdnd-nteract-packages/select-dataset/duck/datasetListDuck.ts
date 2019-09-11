@@ -127,17 +127,16 @@ const datasetListEpic = action$ => action$.pipe(
       ajax
         .post(
           //BASE_API_URI + "dati-gov/v1/public/elasticsearch/search",
-          "http://localhost:8080/pdnd-openapi/pdnd-nteract/search_ckan",
+          "http://localhost:9301/catalog-manager/v1/api/catalog/_search",
           JSON.stringify({
-            text: payload,
-            index: [],
-            org: [],
-            theme: [],
-            date: "",
-            status: [],
-            order: "score",
-            limit: 0
-          }),
+            filters:{
+              businessOwners:[],
+              categories:[],
+              statuses:[],
+              tags:[]
+            },
+            term: payload
+            }),
           {
             Accept: "application/json",
             "Content-Type": "application/json"

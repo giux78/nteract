@@ -2,7 +2,7 @@ import React, { FunctionComponent, Fragment } from "react";
 import styled, { StyledComponent } from "styled-components";
 import { H4 as BlueprintH4, H3, H6, Classes } from "@blueprintjs/core";
 
-import { PdndWideLogo } from "./components/pdndLogos";
+import { PdndWideLogo, AxaWideLogo } from "./components/pdndLogos";
 
 const WrapperDiv: StyledComponent<"div", any, {}, never> = styled.div`
   background-color: hsl(210, 100%, 40%);
@@ -35,9 +35,9 @@ const ThemedLogo = ({
   subheadingStyle = { marginBottom: 0 }
 }) => (
   <div style={wrapperStyle}>
-    <PdndWideLogo />
+    <AxaWideLogo />
     <H3 className={Classes.DARK} style={headingStyle}>
-      PDND Explorer
+      Data Explorer
       <H6 style={subheadingStyle}>forked from{" "}
         <a href="https://github.com/nteract/nteract">nteract/nteract</a>
       </H6>
