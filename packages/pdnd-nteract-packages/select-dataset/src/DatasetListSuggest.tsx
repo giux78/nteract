@@ -125,7 +125,7 @@ const DatasetListSuggest = ({
         // itemListRenderer={itemListProps => <Menu>{renderFilteredItems(itemListProps)}</Menu>}
         itemPredicate={filterDatasetItem}
         inputValueRenderer={datasetInputRender}
-        onItemSelect={({ name , url }: IDatasetItem) => requestDataset({ name , url})}
+        onItemSelect={({ name , physicalUrl }: IDatasetItem) => requestDataset({ name , physicalUrl})}
       />
     </FormGroup>
   </Fragment>

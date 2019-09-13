@@ -5,7 +5,7 @@ import { H4 as BlueprintH4, H3, H6, Classes } from "@blueprintjs/core";
 import { PdndWideLogo, AxaWideLogo } from "./components/pdndLogos";
 
 const WrapperDiv: StyledComponent<"div", any, {}, never> = styled.div`
-  background-color: hsl(210, 100%, 40%);
+  background-color: rgb(250, 250, 250);
   box-sizing: border-box;
 `;
 
@@ -30,14 +30,17 @@ const ThemedLogo = ({
   headingStyle = {
     marginLeft: "10px",
     marginBottom: 0,
-    marginRight: "20px"
+    marginRight: "20px",
+    color: "black"
   },
-  subheadingStyle = { marginBottom: 0 }
+  subheadingStyle = { marginBottom: 0,
+  color : "black"
+  }
 }) => (
   <div style={wrapperStyle}>
     <AxaWideLogo />
     <H3 className={Classes.DARK} style={headingStyle}>
-      Data Explorer
+      AXA Explorer
       <H6 style={subheadingStyle}>forked from{" "}
         <a href="https://github.com/nteract/nteract">nteract/nteract</a>
       </H6>

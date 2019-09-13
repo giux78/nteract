@@ -112,11 +112,11 @@ const makeDatasetSnippetByKernel = ({
   kernelName,
   metacatalog
 }): string => {
-  if (kernelName == "python3") {
+  if (kernelName === "python3") {
     const dataVar = metacatalog.dcatapit.name; // .substring(0, 20);
-    return `url = "${BASE_API_URI}dataset-manager/v1/dataset/${encodeURIComponent(
+    return `url = "https://axadaf.s3-eu-west-1.amazonaws.com/${encodeURIComponent(
       datasetURI
-    )}?format=json" 
+    )}" 
 payload = ""
 headers = {'authorization': 'Bearer YOU_MUST_BE_LOGGEDIN'}
 response = requests.request("GET", url, data=payload, headers=headers)
@@ -250,11 +250,12 @@ const requestDatasetEpic = action$ =>
       of({})
         .pipe(
           map(() => fulfillDataset({
-            operational: {
-              logical_uri: payload.url
-            },
             dcatapit: {
               name: payload.name
+            },
+            operational: {
+              logical_uri: payload.physicalUrl
+                  .substring(payload.physicalUrl.lastIndexOf("/") + 1)
             }
           })),
           catchError(error => of(rejectDataset(error)))

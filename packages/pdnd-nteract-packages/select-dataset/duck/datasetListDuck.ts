@@ -144,7 +144,7 @@ const datasetListEpic = action$ => action$.pipe(
         )
         .pipe(
           map(({ response }) =>
-            response
+            response.entries
               //.filter(({ type }) => type === "catalog_test")
               .map((obj) => ({
                 dcatapit: obj
