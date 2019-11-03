@@ -37,7 +37,7 @@ const LoginDialog: FunctionComponent<ILoginDialogProps> = ({
   return (
     <Dialog
       isOpen={isOpen}
-      title={<H3 style={{ color: "hsl(210, 100%, 40%)" }}>Pdnd Login</H3>}
+      title={<H3 style={{ color: "hsl(210, 100%, 40%)" }}>AXA Login</H3>}
       onClose={onClose}
     >
       <form onSubmit={handleSubmit}>

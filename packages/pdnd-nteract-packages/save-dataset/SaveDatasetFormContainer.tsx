@@ -15,7 +15,7 @@ const SaveDataset: FunctionComponent<SaveDatasetProps> = ({
   isEditorOrAdmin,
   requestDatasetSave
 }) =>
-  isEditorOrAdmin && (
+  //isEditorOrAdmin && (
     <Popover
       popoverClassName={Classes.POPOVER_CONTENT_SIZING}
       position={Position.BOTTOM_RIGHT}
@@ -25,7 +25,7 @@ const SaveDataset: FunctionComponent<SaveDatasetProps> = ({
       content={<SaveDatasetForm requestDatasetSave={requestDatasetSave} />}
       target={<Button minimal small icon={IconNames.FLOPPY_DISK} />}
     />
-  );
+ // );
 
 const SaveDatasetContainer = connect(
   state => ({ ...isEditorOrAdmin(state) }),

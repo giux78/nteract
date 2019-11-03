@@ -114,19 +114,19 @@ const makeDatasetSnippetByKernel = ({
 }): string => {
   if (kernelName === "python3") {
     const dataVar = metacatalog.dcatapit.name; // .substring(0, 20);
-    return `url = "https://axadaf.s3-eu-west-1.amazonaws.com/${encodeURIComponent(
+    return `url = "${BASE_API_URI}${encodeURIComponent(
       datasetURI
     )}" 
 payload = ""
 headers = {'authorization': 'Bearer YOU_MUST_BE_LOGGEDIN'}
 response = requests.request("GET", url, data=payload, headers=headers)
-${dataVar} = pd.read_json(StringIO(response.text))
+${dataVar} = pd.read_csv(StringIO(response.text))
 ${dataVar}`;
   } else if (kernelName == "scala") {
     return `import ammonite.ops._, scalaj.http._
-val resp = Http("${BASE_API_URI}dataset-manager/v1/dataset/${encodeURIComponent(
+val resp = Http("${BASE_API_URI}${encodeURIComponent(
       datasetURI
-    )}?format=json")
+    )})
 .headers(Seq("Authorization" -> ("Bearer YOU_MUST_BE_LOGGEDIN"),
 "content-Type" -> "application/json"))
 .asString
@@ -140,9 +140,9 @@ library(httr)
 #install.packages("ggplot2")
 library(ggplot2)
 library(IRdisplay)
-data <- GET("${BASE_API_URI}dataset-manager/v1/dataset/${encodeURIComponent(
+data <- GET("${BASE_API_URI}${encodeURIComponent(
       datasetURI
-    )}?format=csv", 
+    )}", 
   add_headers(Authorization = "Bearer YOU_MUST_BE_LOGGEDIN"))
 content <- content(data)
 ${metacatalog.dcatapit.name} <- read.csv(text=content, header=TRUE, sep=",")
@@ -157,9 +157,9 @@ using Plots;
 using HTTP;
 using CSV;
 res = HTTP.request("GET",
-  "${BASE_API_URI}dataset-manager/v1/dataset/${encodeURIComponent(
+  "${BASE_API_URI}${encodeURIComponent(
       datasetURI
-    )}?format=csv",
+    )}",
   [("Authorization", "Bearer YOU_MUST_BE_LOGGEDIN")]);
 ${metacatalog.dcatapit.name} = CSV.read(IOBuffer(res.body));
 ${metacatalog.dcatapit.name}
