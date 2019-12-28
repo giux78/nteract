@@ -10,7 +10,7 @@ import { ISelectDatasetProps } from "./types";
 const SelectDataset: FunctionComponent<ISelectDatasetProps> = ({
   isUserLogged
 }) =>
-  isUserLogged && (
+ // isUserLogged && (
     <Popover
       popoverClassName={Classes.POPOVER_CONTENT_SIZING}
       position={Position.BOTTOM_RIGHT}
@@ -20,7 +20,7 @@ const SelectDataset: FunctionComponent<ISelectDatasetProps> = ({
       content={<DatasetListContainer />} // may add {...props} ?
       target={<Button minimal small icon={IconNames.SEARCH_TEMPLATE} />}
     />
-  );
+//  );
 
 const SelectDatasetContainer = connect(
   state => ({ ...isUserLogged(state) }),

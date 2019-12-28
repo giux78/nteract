@@ -37,7 +37,7 @@ const ThemedLogo = ({
   <div style={wrapperStyle}>
     <PdndWideLogo />
     <H3 className={Classes.DARK} style={headingStyle}>
-      PDND Explorer
+      CKAN Explorer
       <H6 style={subheadingStyle}>forked from{" "}
         <a href="https://github.com/nteract/nteract">nteract/nteract</a>
       </H6>

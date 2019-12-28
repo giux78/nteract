@@ -96,9 +96,9 @@ const selectedDatasetSelectors = { datasetSelector, datasetMetaSelector };
 
 // operations (TODO: needs refactor)
 const makeDatasetSnippet = ({ datasetURI, bearerToken }): string =>
-  `url = "${BASE_API_URI}dataset-manager/v1/dataset/${encodeURIComponent(
+  `url = "${encodeURIComponent(
     datasetURI
-  )}?format=json"
+  )}?format=csv"
 payload = ""
 
 headers = {'authorization': 'Bearer ${bearerToken}'}
@@ -114,13 +114,13 @@ const makeDatasetSnippetByKernel = ({
 }): string => {
   if (kernelName == "python3") {
     const dataVar = metacatalog.dcatapit.name; // .substring(0, 20);
-    return `url = "${BASE_API_URI}dataset-manager/v1/dataset/${encodeURIComponent(
+    return `url = "${
       datasetURI
-    )}?format=json" 
+    }?format=csv" 
 payload = ""
 headers = {'authorization': 'Bearer YOU_MUST_BE_LOGGEDIN'}
 response = requests.request("GET", url, data=payload, headers=headers)
-${dataVar} = pd.read_json(StringIO(response.text))
+${dataVar} = pd.read_csv(StringIO(response.text))
 ${dataVar}`;
   } else if (kernelName == "scala") {
     return `import ammonite.ops._, scalaj.http._

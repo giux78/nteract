@@ -14,18 +14,19 @@ type SaveDatasetProps = {
 const SaveDataset: FunctionComponent<SaveDatasetProps> = ({
   isEditorOrAdmin,
   requestDatasetSave
-}) =>
-  isEditorOrAdmin && (
-    <Popover
-      popoverClassName={Classes.POPOVER_CONTENT_SIZING}
-      position={Position.BOTTOM_RIGHT}
-      defaultIsOpen={false}
-      captureDismiss={false}
-      lazy={true}
-      content={<SaveDatasetForm requestDatasetSave={requestDatasetSave} />}
-      target={<Button minimal small icon={IconNames.FLOPPY_DISK} />}
-    />
-  );
+}) => (
+  //  isEditorOrAdmin && (
+  <Popover
+    popoverClassName={Classes.POPOVER_CONTENT_SIZING}
+    position={Position.BOTTOM_RIGHT}
+    defaultIsOpen={false}
+    captureDismiss={false}
+    lazy={true}
+    content={<SaveDatasetForm requestDatasetSave={requestDatasetSave} />}
+    target={<Button minimal small icon={IconNames.FLOPPY_DISK} />}
+  />
+);
+//  );
 
 const SaveDatasetContainer = connect(
   state => ({ ...isEditorOrAdmin(state) }),
