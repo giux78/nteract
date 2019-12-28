@@ -50,7 +50,7 @@ apiVersion.pipe(
 
 ## Documentation
 
-You can view the reference documentation for `rx-jupyter` in the [package docs](https://packages.nteract.io/modules/rx-jupyter).
+You can view the reference documentation for `rx-jupyter` in the [package docs](https://packages.nteract.io/modules/rx_jupyter).
 
 ## Support
 

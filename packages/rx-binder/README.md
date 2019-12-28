@@ -1,6 +1,6 @@
 # rx-binder
 
-This package provides a set of functions for connecting to a remote instance provided by [Binder](https://mybinder.org/). This package will allow you to connect to a remote compute instance from your nteract application to execute code. To see this package in action, you can view the source code for the [nteract play app](https://github.com/nteract/nteract/tree/master/applications/play).
+This package provides a set of functions for connecting to a remote instance provided by [Binder](https://mybinder.org/). This package will allow you to connect to a remote compute instance from your nteract application to execute code. To see this package in action, you can view the source code for the [nteract play app](https://github.com/nteract/play).
 
 ## Installation
 
@@ -30,7 +30,7 @@ binder({ repo: "nteract/vdom" }).subscribe(msg => console.log(msg));
 
 ## Documentation
 
-You can view the reference documentation for `rx-binder` in the [package docs](https://packages.nteract.io/modules/rx-binder).
+You can view the reference documentation for `rx-binder` in the [package docs](https://packages.nteract.io/modules/rx_binder).
 
 ## Support
 

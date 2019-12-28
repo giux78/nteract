@@ -3,18 +3,16 @@ import { ChildProcess } from "child_process";
 import * as Immutable from "immutable";
 import { Observable, Subject } from "rxjs";
 
-import { HostRef, KernelRef } from "../refs";
 import { KernelId, SessionId } from "../ids";
+import { HostRef, KernelRef } from "../refs";
 
 import { KernelInfo } from "./kernel-info";
-
-export { KernelInfo };
 
 // See #3427. This represents the kernel early in the launch process.
 // With a bit more work we could probably drop this and just use either
 // Local or RemoteKernelProps as our initial representation of the kernel,
 // deriving local-vs-remote from known sources of truth about kernels.
-export type KernelNotStartedProps = {
+export interface KernelNotStartedProps {
   kernelSpecName?: string | null;
   status?: string | null;
   // The following properties are not known immediately at the start of
@@ -24,7 +22,7 @@ export type KernelNotStartedProps = {
   cwd: ".";
   channels: Subject<any>;
   info?: KernelInfo | null;
-};
+}
 
 export type KernelNotStartedRecord = Immutable.RecordOf<KernelNotStartedProps>;
 
@@ -39,7 +37,24 @@ export const makeKernelNotStartedRecord = Immutable.Record<
   info: null
 });
 
-export type LocalKernelProps = {
+export enum KernelStatus {
+  /** Kernel is currently executing code. */
+  Busy = "busy",
+  /** Kernel is currently not executing code. */
+  Idle = "idle",
+  /** Kernel process is being launched. */
+  Starting = "starting",
+  /** Kernel is being shut down. */
+  ShuttingDown = "shutting down",
+  /** Kernel is restarting. */
+  Restarting = "restarting",
+  /** Kernel's current execution process has been interrupted. */
+  Interrupted = "interrupted",
+  /** Kernel is not connected to current notebook. */
+  NotConnected = "not connected"
+}
+
+export interface LocalKernelProps {
   kernelSpecName?: string | null;
   info?: KernelInfo | null;
   hostRef?: HostRef | null;
@@ -55,7 +70,7 @@ export type LocalKernelProps = {
   type: "zeromq";
   spawn?: ChildProcess | null;
   connectionFile?: string | null;
-};
+}
 
 export const makeLocalKernelRecord = Immutable.Record<LocalKernelProps>({
   type: "zeromq",
@@ -72,7 +87,7 @@ export const makeLocalKernelRecord = Immutable.Record<LocalKernelProps>({
 
 export type LocalKernelRecord = Immutable.RecordOf<LocalKernelProps>;
 
-export type RemoteKernelProps = {
+export interface RemoteKernelProps {
   kernelSpecName?: string | null;
   info?: KernelInfo | null;
   hostRef?: HostRef | null;
@@ -88,7 +103,7 @@ export type RemoteKernelProps = {
   type: "websocket";
   sessionId?: SessionId | null;
   id?: KernelId | null;
-};
+}
 
 export const makeRemoteKernelRecord = Immutable.Record<RemoteKernelProps>({
   type: "websocket",
@@ -110,9 +125,9 @@ export type KernelRecord =
   | LocalKernelRecord
   | RemoteKernelRecord;
 
-export type KernelsRecordProps = {
+export interface KernelsRecordProps {
   byRef: Immutable.Map<KernelRef, KernelRecord>;
-};
+}
 
 export const makeKernelsRecord = Immutable.Record<KernelsRecordProps>({
   byRef: Immutable.Map()

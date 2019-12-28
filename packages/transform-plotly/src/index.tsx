@@ -1,11 +1,11 @@
 /* eslint class-methods-use-this: 0 */
+import cloneDeep from "lodash.clonedeep";
 import React from "react";
-import { cloneDeep } from "lodash";
 
-type Props = {
+interface Props {
   data: string | object;
   mediaType: "application/vnd.plotly.v1+json";
-};
+}
 
 type ObjectType = object;
 
@@ -41,19 +41,26 @@ PlotlyNullTransform.defaultProps = {
 };
 
 export class PlotlyTransform extends React.Component<Props> {
-  plotDiv?: PlotlyHTMLElement | null;
-  Plotly!: { newPlot: Function; redraw: Function };
-
   static MIMETYPE = MIMETYPE;
 
   static defaultProps = {
     mediaType: MIMETYPE
   };
 
+  plotDiv?: PlotlyHTMLElement | null;
+  Plotly!: {
+    newPlot: (
+      div: PlotlyHTMLElement | null | undefined,
+      data: object,
+      layout: FigureLayout
+    ) => void;
+    redraw: (div?: PlotlyHTMLElement) => void;
+  };
+
   componentDidMount(): void {
     // Handle case of either string to be `JSON.parse`d or pure object
     const figure = this.getFigure();
-    this.Plotly = require("@nteract/plotly");
+    this.Plotly = require("plotly.js-dist");
     this.Plotly.newPlot(this.plotDiv, figure.data, figure.layout);
   }
 
@@ -63,7 +70,9 @@ export class PlotlyTransform extends React.Component<Props> {
 
   componentDidUpdate() {
     const figure = this.getFigure();
-    if (!this.plotDiv) return;
+    if (!this.plotDiv) {
+      return;
+    }
     this.plotDiv.data = figure.data;
     this.plotDiv.layout = figure.layout;
     this.Plotly.redraw(this.plotDiv);
@@ -96,7 +105,6 @@ export class PlotlyTransform extends React.Component<Props> {
     if (layout && layout.height && !layout.autosize) {
       style.height = layout.height;
     }
-    // $FlowFixMe: a normal div doesn't have the properties that plotly puts on it
     return <div ref={this.plotDivRef} style={style} />;
   }
 }

@@ -2,12 +2,12 @@ import * as Immutable from "immutable";
 
 import { ContentRef } from "../../refs";
 
-export type DirectoryModelRecordProps = {
+export interface DirectoryModelRecordProps {
   type: "directory";
   sortedBy?: "created" | "lastSaved" | "type" | "name";
   groupedBy?: "type" | "mimetype";
   items: Immutable.List<ContentRef>;
-};
+}
 export const makeDirectoryModel = Immutable.Record<DirectoryModelRecordProps>({
   type: "directory",
   items: Immutable.List()
@@ -16,7 +16,7 @@ export type DirectoryModelRecord = Immutable.RecordOf<
   DirectoryModelRecordProps
 >;
 
-export type DirectoryContentRecordProps = {
+export interface DirectoryContentRecordProps {
   mimetype: null;
   type: "directory";
   created: Date | null;
@@ -24,7 +24,10 @@ export type DirectoryContentRecordProps = {
   lastSaved: Date | null;
   filepath: string;
   model: DirectoryModelRecord;
-};
+  saving: boolean;
+  loading: boolean;
+  error?: object | null;
+}
 export const makeDirectoryContentRecord = Immutable.Record<
   DirectoryContentRecordProps
 >({
@@ -34,7 +37,10 @@ export const makeDirectoryContentRecord = Immutable.Record<
   format: "json",
   lastSaved: null,
   filepath: "",
-  model: makeDirectoryModel()
+  model: makeDirectoryModel(),
+  saving: false,
+  loading: false,
+  error: null
 });
 export type DirectoryContentRecord = Immutable.RecordOf<
   DirectoryContentRecordProps

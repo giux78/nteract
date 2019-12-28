@@ -1,25 +1,28 @@
+import cloneDeep from "lodash.clonedeep";
 import { from, of } from "rxjs";
-import { map, tap, count, toArray } from "rxjs/operators";
-import { cloneDeep } from "lodash";
+import { count, map, tap, toArray } from "rxjs/operators";
 
 import {
-  ofMessageType,
   childOf,
-  createMessage,
-  createExecuteRequest,
   convertOutputMessageToNotebookFormat,
-  outputs,
-  payloads,
+  createExecuteRequest,
+  createMessage,
+  createCommMessage,
+  createCommOpenMessage,
+  createCommCloseMessage,
   executionCounts,
+  JupyterMessage,
   kernelStatuses,
-  JupyterMessage
+  ofMessageType,
+  outputs,
+  payloads
 } from "../src";
 import {
-  executeInput,
   displayData,
-  status,
+  executeInput,
   executeReply,
-  message
+  message,
+  status
 } from "../src/messages";
 
 describe("createMessage", () => {
@@ -47,6 +50,66 @@ describe("createExecuteRequest", () => {
   });
 });
 
+describe("createCommMessage", () => {
+  test("creates a comm_msg", () => {
+    const commMessage = createCommMessage("0000", { hey: "is for horses" });
+
+    expect(commMessage.content.data).toEqual({ hey: "is for horses" });
+    expect(commMessage.content.comm_id).toBe("0000");
+    expect(commMessage.header.msg_type).toBe("comm_msg");
+  });
+});
+
+describe("createCommOpenMessage", () => {
+  test("creates a comm_open", () => {
+    const commMessage = createCommOpenMessage(
+      "0001",
+      "myTarget",
+      {
+        hey: "is for horses"
+      },
+      "targetModule"
+    );
+
+    expect(commMessage.content).toEqual({
+      comm_id: "0001",
+      target_name: "myTarget",
+      data: { hey: "is for horses" },
+      target_module: "targetModule"
+    });
+  });
+  test("can specify a target_module", () => {
+    const commMessage = createCommOpenMessage(
+      "0001",
+      "myTarget",
+      { hey: "is for horses" },
+      "Dr. Pepper"
+    );
+
+    expect(commMessage.content).toEqual({
+      comm_id: "0001",
+      target_name: "myTarget",
+      data: { hey: "is for horses" },
+      target_module: "Dr. Pepper"
+    });
+  });
+});
+
+describe("createCommCloseMessage", () => {
+  test("creates a comm_msg", () => {
+    const parent_header = { id: "23" };
+
+    const commMessage = createCommCloseMessage(parent_header, "0000", {
+      hey: "is for horses"
+    });
+
+    expect(commMessage.content.data).toEqual({ hey: "is for horses" });
+    expect(commMessage.content.comm_id).toBe("0000");
+    expect(commMessage.header.msg_type).toBe("comm_close");
+    expect(commMessage.parent_header).toEqual(parent_header);
+  });
+});
+
 describe("childOf", () => {
   it("filters messages that have the same parent", () =>
     from([
@@ -56,10 +119,7 @@ describe("childOf", () => {
       { parent_header: { msg_id: "300" } },
       { parent_header: { msg_id: "100" } }
     ] as JupyterMessage[])
-      .pipe(
-        childOf({ header: { msg_id: "100" } } as JupyterMessage),
-        count()
-      )
+      .pipe(childOf({ header: { msg_id: "100" } } as JupyterMessage), count())
       .toPromise()
       .then(val => {
         expect(val).toEqual(3);
@@ -211,10 +271,7 @@ describe("outputs", () => {
     );
 
     return hacking
-      .pipe(
-        outputs(),
-        toArray()
-      )
+      .pipe(outputs(), toArray())
       .toPromise()
       .then(arr => {
         expect(arr).toEqual([
@@ -248,10 +305,7 @@ describe("payloads", () => {
         { payload: [{ should: "not be in it" }] }
       )
     )
-      .pipe(
-        payloads(),
-        toArray()
-      )
+      .pipe(payloads(), toArray())
       .toPromise()
       .then(arr => {
         expect(arr).toEqual([{ c: "d" }, { a: "b" }, { g: "6" }]);
@@ -278,10 +332,30 @@ describe("executionCounts", () => {
       }),
       status("idle")
     )
-      .pipe(
-        executionCounts(),
-        toArray()
-      )
+      .pipe(executionCounts(), toArray())
+      .toPromise()
+      .then(arr => {
+        expect(arr).toEqual([0, 1]);
+      });
+  });
+  it("extracts all execution counts from a session", () => {
+    return of(
+      status("starting"),
+      status("idle"),
+      status("busy"),
+      executeReply({
+        status: "idle",
+        execution_count: 0
+      }),
+      displayData({ data: { "text/plain": "woo" } }),
+      displayData({ data: { "text/plain": "hoo" } }),
+      executeReply({
+        status: "idle",
+        execution_count: 1
+      }),
+      status("idle")
+    )
+      .pipe(executionCounts(), toArray())
       .toPromise()
       .then(arr => {
         expect(arr).toEqual([0, 1]);
@@ -299,10 +373,7 @@ describe("kernelStatuses", () => {
       displayData({ data: { "text/plain": "hoo" } }),
       status("idle")
     )
-      .pipe(
-        kernelStatuses(),
-        toArray()
-      )
+      .pipe(kernelStatuses(), toArray())
       .toPromise()
       .then(arr => {
         expect(arr).toEqual(["starting", "idle", "busy", "idle"]);

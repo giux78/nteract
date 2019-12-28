@@ -2,15 +2,26 @@ import * as Immutable from "immutable";
 
 import { ContentRef } from "../../refs";
 
-import { NotebookContentRecord, NotebookModel } from "./notebook";
 import { DirectoryContentRecord, DirectoryModelRecord } from "./directory";
 import { DummyContentRecord, EmptyModelRecord } from "./dummy";
 import { FileContentRecord, FileModelRecord } from "./file";
+import { NotebookContentRecord, NotebookModel } from "./notebook";
 
 export * from "./notebook";
 export * from "./directory";
 export * from "./dummy";
 export * from "./file";
+
+export interface AuthorObject {
+  name: string;
+}
+
+export interface HeaderDataProps {
+  authors: AuthorObject[];
+  description: string;
+  tags: string[];
+  title: string;
+}
 
 export type ContentModel =
   | NotebookModel
@@ -24,10 +35,12 @@ export type ContentRecord =
   | FileContentRecord
   | DirectoryContentRecord;
 
-export type ContentsRecordProps = {
+export interface ContentsRecordProps {
   byRef: Immutable.Map<ContentRef, ContentRecord>;
-};
+}
 
 export const makeContentsRecord = Immutable.Record<ContentsRecordProps>({
-  byRef: Immutable.Map()
+  byRef: Immutable.Map<ContentRef, ContentRecord>()
 });
+
+export type ContentsRecord = Immutable.RecordOf<ContentsRecordProps>;

@@ -1,36 +1,44 @@
-import uuid from "uuid/v4";
-import * as Immutable from "immutable";
+// Vendor modules
+import * as actionTypes from "@nteract/actions";
 import {
-  ImmutableCell,
-  ImmutableCodeCell,
-  ImmutableNotebook,
   CellId,
-  Output,
-  StreamOutput,
-  ImmutableMarkdownCell
-} from "@nteract/commutable";
-import {
-  makeCodeCell,
-  makeRawCell,
-  makeMarkdownCell,
+  createFrozenMediaBundle,
+  createImmutableOutput,
+  deleteCell,
   emptyCodeCell,
   emptyMarkdownCell,
-  insertCellAt,
-  insertCellAfter,
-  deleteCell,
   emptyNotebook,
-  createImmutableOutput,
-  createImmutableMimeBundle
+  ImmutableCell,
+  ImmutableCodeCell,
+  ImmutableMarkdownCell,
+  ImmutableNotebook,
+  ImmutableOutput,
+  insertCellAfter,
+  insertCellAt,
+  makeCodeCell,
+  makeMarkdownCell,
+  makeRawCell,
+  markCellDeleting,
+  markCellNotDeleting,
+  OnDiskDisplayData,
+  OnDiskExecuteResult,
+  OnDiskOutput,
+  OnDiskStreamOutput
 } from "@nteract/commutable";
-import { has } from "lodash";
+import { UpdateDisplayDataContent } from "@nteract/messaging";
+import {
+  DocumentRecordProps,
+  makeDocumentRecord,
+  NotebookModel,
+  PayloadMessage
+} from "@nteract/types";
 import { escapeCarriageReturnSafe } from "escape-carriage";
+import { fromJS, List, Map, RecordOf, Set } from "immutable";
+import has from "lodash.has";
+import uuid from "uuid/v4";
 
-import * as actionTypes from "@nteract/actions";
-import { makeDocumentRecord, PayloadMessage } from "@nteract/types";
-import { NotebookModel } from "@nteract/types";
-
-type KeyPath = Immutable.List<string | number>;
-type KeyPaths = Immutable.List<KeyPath>;
+type KeyPath = List<string | number>;
+type KeyPaths = List<KeyPath>;
 
 /**
  * An output can be a stream of data that does not arrive at a single time. This
@@ -39,24 +47,33 @@ type KeyPaths = Immutable.List<KeyPath>;
  *
  * @param {Object} outputs - Kernel output messages
  * @param {Object} output - Outputted to be reduced into list of outputs
- * @return {Immutable.List<Object>} updated-outputs - Outputs + Output
+ * @return {List<Object>} updated-outputs - Outputs + Output
  */
 export function reduceOutputs(
-  outputs: Immutable.List<any> = Immutable.List(),
-  output: Output
-) {
-  const last = outputs.last();
+  outputs: List<ImmutableOutput> = List(),
+  output: OnDiskOutput
+): List<ImmutableOutput> {
+  // Find the last output to see if it's a stream type
+  // If we don't find one, default to null
+  const last = outputs.last(null);
 
-  if (
-    output.output_type !== "stream" ||
-    !last ||
-    (outputs.size > 0 && last.get("output_type") !== "stream")
-  ) {
-    // If it's not a stream type, we just fold in the output
+  if (!last || !last.output_type) {
     return outputs.push(createImmutableOutput(output));
   }
 
-  const streamOutput: StreamOutput = output;
+  if (output.output_type !== "stream" || last.output_type !== "stream") {
+    // If the last output type or the incoming output type isn't a stream
+    // we just add it to the outputs
+    // This is kind of like a "break" between streams if we get error,
+    // display_data, execute_result, etc.
+    return outputs.push(createImmutableOutput(output));
+  }
+
+  const streamOutput: OnDiskStreamOutput = output;
+
+  if (typeof streamOutput.name === "undefined") {
+    return outputs.push(createImmutableOutput(streamOutput));
+  }
 
   function appendText(text: string): string {
     if (typeof streamOutput.text === "string") {
@@ -65,55 +82,60 @@ export function reduceOutputs(
     return text;
   }
 
-  if (
-    last &&
-    outputs.size > 0 &&
-    typeof streamOutput.name !== "undefined" &&
-    last.get("output_type") === "stream"
-  ) {
-    // Invariant: size > 0, outputs.last() exists
-    if (last.get("name") === streamOutput.name) {
-      return outputs.updateIn([outputs.size - 1, "text"], appendText);
-    }
-    const nextToLast:
-      | Immutable.Map<string, any>
-      | undefined = outputs.butLast().last();
-    if (
-      nextToLast &&
-      nextToLast.get("output_type") === "stream" &&
-      nextToLast.get("name") === streamOutput.name
-    ) {
-      return outputs.updateIn([outputs.size - 2, "text"], appendText);
-    }
+  // Invariant: size > 0, outputs.last() exists
+  if (last.name === streamOutput.name) {
+    return outputs.updateIn([outputs.size - 1, "text"], appendText);
   }
 
+  // Check if there's a separate stream to merge with
+  const nextToLast = outputs.butLast().last(null);
+
+  if (
+    nextToLast &&
+    nextToLast.output_type === "stream" &&
+    nextToLast.name === streamOutput.name
+  ) {
+    return outputs.updateIn([outputs.size - 2, "text"], appendText);
+  }
+  // If nothing else matched, just append it
   return outputs.push(createImmutableOutput(streamOutput));
 }
 
-export function cleanCellTransient(state: NotebookModel, id: string) {
+export function cleanCellTransient(
+  state: NotebookModel,
+  id: string
+): RecordOf<DocumentRecordProps> {
   // Clear out key paths that should no longer be referenced
   return state
-    .setIn(["cellPagers", id], Immutable.List())
+    .setIn(["cellPagers", id], List())
     .updateIn(
       ["transient", "keyPathsForDisplays"],
-      (kpfd: Immutable.Map<string, KeyPaths>) =>
-        (kpfd || Immutable.Map()).map((keyPaths: KeyPaths) =>
+      (kpfd: Map<string, KeyPaths>) =>
+        (kpfd || Map()).map((keyPaths: KeyPaths) =>
           keyPaths.filter((keyPath: KeyPath) => keyPath.get(2) !== id)
         )
     )
-    .setIn(["transient", "cellMap", id], Immutable.Map());
+    .setIn(["transient", "cellMap", id], Map());
 }
 
-function setNotebookCheckpoint(state: NotebookModel) {
+function setNotebookCheckpoint(
+  state: NotebookModel
+): RecordOf<DocumentRecordProps> {
   // Use the current version of the notebook document
   return state.set("savedNotebook", state.get("notebook"));
 }
 
-function focusCell(state: NotebookModel, action: actionTypes.FocusCell) {
+function focusCell(
+  state: NotebookModel,
+  action: actionTypes.FocusCell
+): RecordOf<DocumentRecordProps> {
   return state.set("cellFocused", action.payload.id);
 }
 
-function clearOutputs(state: NotebookModel, action: actionTypes.ClearOutputs) {
+function clearOutputs(
+  state: NotebookModel,
+  action: actionTypes.ClearOutputs
+): RecordOf<DocumentRecordProps> {
   const id = action.payload.id ? action.payload.id : state.cellFocused;
   if (!id) {
     return state;
@@ -125,8 +147,9 @@ function clearOutputs(state: NotebookModel, action: actionTypes.ClearOutputs) {
 
   if (type === "code") {
     return cleanedState
-      .setIn(["notebook", "cellMap", id, "outputs"], Immutable.List())
-      .setIn(["notebook", "cellMap", id, "execution_count"], null);
+      .setIn(["notebook", "cellMap", id, "outputs"], List())
+      .setIn(["notebook", "cellMap", id, "execution_count"], null)
+      .setIn(["cellPrompts", id], List());
   }
   return cleanedState;
 }
@@ -134,18 +157,25 @@ function clearOutputs(state: NotebookModel, action: actionTypes.ClearOutputs) {
 function toggleTagInCell(
   state: NotebookModel,
   action: actionTypes.ToggleTagInCell
-): NotebookModel {
+): RecordOf<DocumentRecordProps> {
   const { id, tag } = action.payload;
 
-  return state.updateIn(["notebook", "cellMap", id, "metadata", "tags"], tags =>
-    tags.has(tag) ? tags.remove(tag) : tags.add(tag)
+  return state.updateIn(
+    ["notebook", "cellMap", id, "metadata", "tags"],
+    tags => {
+      if (tags) {
+        return tags.has(tag) ? tags.remove(tag) : tags.add(tag);
+      } else {
+        return Set([tag]);
+      }
+    }
   );
 }
 
 function clearAllOutputs(
   state: NotebookModel,
   action: actionTypes.ClearAllOutputs | actionTypes.RestartKernel
-) {
+): RecordOf<DocumentRecordProps> {
   // If we get a restart kernel action that said to clear outputs, we'll
   // handle it
   if (
@@ -162,7 +192,7 @@ function clearAllOutputs(
     .map((cell: ImmutableCell) => {
       if ((cell as any).get("cell_type") === "code") {
         return (cell as ImmutableCodeCell).merge({
-          outputs: Immutable.List(),
+          outputs: List(),
           execution_count: null
         });
       }
@@ -170,31 +200,84 @@ function clearAllOutputs(
     });
 
   // Clear all the transient data too
-  const transient = Immutable.Map({
-    keyPathsForDisplays: Immutable.Map(),
-    cellMap: cellMap.map(() => Immutable.Map())
+  const transient = Map({
+    keyPathsForDisplays: Map(),
+    cellMap: cellMap.map(() => Map())
   });
 
   return state
     .setIn(["notebook", "cellMap"], cellMap)
-    .set("transient", transient);
+    .set("transient", transient)
+    .set("cellPrompts", Map());
 }
 
-function appendOutput(state: NotebookModel, action: actionTypes.AppendOutput) {
+type UpdatableOutputContent =
+  | OnDiskExecuteResult
+  | OnDiskDisplayData
+  | UpdateDisplayDataContent;
+
+// Utility function used in two reducers below
+function updateAllDisplaysWithID(
+  state: NotebookModel,
+  content: UpdatableOutputContent
+): NotebookModel {
+  if (!content || !content.transient || !content.transient.display_id) {
+    return state;
+  }
+
+  const keyPaths: KeyPaths =
+    state.getIn([
+      "transient",
+      "keyPathsForDisplays",
+      content.transient.display_id
+    ]) || List();
+
+  const updateOutput = (output: any) => {
+    if (output) {
+      // We already have something here, don't change the other fields
+      return output.merge({
+        data: createFrozenMediaBundle(content.data),
+        metadata: fromJS(content.metadata || {})
+      });
+    } else if (content.output_type === "update_display_data") {
+      // Nothing here and we have no valid output, just create a basic output
+      return {
+        data: createFrozenMediaBundle(content.data),
+        metadata: fromJS(content.metadata || {}),
+        output_type: "display_data"
+      };
+    } else {
+      // Nothing here, but we have a valid output
+      return createImmutableOutput(content);
+    }
+  };
+
+  const updateOneDisplay = (currState: NotebookModel, keyPath: KeyPath) =>
+    currState.updateIn(keyPath, updateOutput);
+
+  return keyPaths.reduce(updateOneDisplay, state);
+}
+
+function appendOutput(
+  state: NotebookModel,
+  action: actionTypes.AppendOutput
+): RecordOf<DocumentRecordProps> {
   const output = action.payload.output;
   const cellId = action.payload.id;
 
-  // If it's display data and it doesn't have a display id, fold it in like non
-  // display data
+  /**
+   * If it is not a display_data or execute_result with
+   * a display_id, then treat it as a normal output and don't
+   * add its index to the keyPaths.
+   */
   if (
-    output.output_type !== "display_data" ||
+    (output.output_type !== "execute_result" &&
+      output.output_type !== "display_data") ||
     !has(output, "transient.display_id")
   ) {
     return state.updateIn(
       ["notebook", "cellMap", cellId, "outputs"],
-      (
-        outputs: Immutable.List<Immutable.Map<string, any>>
-      ): Immutable.List<Immutable.Map<string, any>> =>
+      (outputs: List<ImmutableOutput>): List<ImmutableOutput> =>
         reduceOutputs(outputs, output)
     );
   }
@@ -209,6 +292,10 @@ function appendOutput(state: NotebookModel, action: actionTypes.AppendOutput) {
   // We now have a display to track
   const displayID = output.transient!.display_id;
 
+  if (!displayID || typeof displayID !== "string") {
+    return state;
+  }
+
   // Every time we see a display id we're going to capture the keypath
   // to the output
 
@@ -218,7 +305,7 @@ function appendOutput(state: NotebookModel, action: actionTypes.AppendOutput) {
     .count();
 
   // Construct the path to the output for updating later
-  const keyPath: KeyPath = Immutable.List([
+  const keyPath: KeyPath = List([
     "notebook",
     "cellMap",
     cellId,
@@ -229,60 +316,28 @@ function appendOutput(state: NotebookModel, action: actionTypes.AppendOutput) {
   const keyPaths: KeyPaths = (
     state
       // Extract the current list of keypaths for this displayID
-      .getIn(["transient", "keyPathsForDisplays", displayID]) ||
-    Immutable.List()
+      .getIn(["transient", "keyPathsForDisplays", displayID]) || List()
   )
     // Append our current output's keyPath
     .push(keyPath);
 
-  const immutableOutput = createImmutableOutput(output);
-
-  // We'll reduce the overall state based on each keypath, updating output
-  return keyPaths
-    .reduce(
-      (currState: NotebookModel, kp: KeyPath) =>
-        // $FlowFixMe
-        currState.setIn(kp, immutableOutput),
-      state
-    )
-    .setIn(["transient", "keyPathsForDisplays", displayID], keyPaths);
+  return updateAllDisplaysWithID(
+    state.setIn(["transient", "keyPathsForDisplays", displayID], keyPaths),
+    output
+  );
 }
 
 function updateDisplay(
   state: NotebookModel,
   action: actionTypes.UpdateDisplay
-) {
-  const { content } = action.payload;
-  if (!(content && content.transient && content.transient.display_id)) {
-    return state;
-  }
-  const displayID = content.transient.display_id;
-
-  const keyPaths: KeyPaths = state.getIn([
-    "transient",
-    "keyPathsForDisplays",
-    displayID
-  ]);
-
-  const updatedContent = {
-    data: createImmutableMimeBundle(content.data),
-    metadata: Immutable.fromJS(content.metadata || {})
-  };
-
-  return keyPaths.reduce(
-    (currState: NotebookModel, kp: KeyPath) =>
-      // $FlowFixMe: gnarly one we need to FIXME
-      currState.updateIn(kp, output => {
-        return output.merge(updatedContent);
-      }),
-    state
-  );
+): RecordOf<DocumentRecordProps> {
+  return updateAllDisplaysWithID(state, action.payload.content);
 }
 
 function focusNextCell(
   state: NotebookModel,
   action: actionTypes.FocusNextCell
-) {
+): RecordOf<DocumentRecordProps> {
   const cellOrder = state.getIn(["notebook", "cellOrder"]);
 
   const id = action.payload.id ? action.payload.id : state.get("cellFocused");
@@ -320,7 +375,7 @@ function focusNextCell(
 function focusPreviousCell(
   state: NotebookModel,
   action: actionTypes.FocusPreviousCell
-): NotebookModel {
+): RecordOf<DocumentRecordProps> {
   const cellOrder = state.getIn(["notebook", "cellOrder"]);
   const curIndex = cellOrder.findIndex(
     (id: CellId) => id === action.payload.id
@@ -333,18 +388,15 @@ function focusPreviousCell(
 function focusCellEditor(
   state: NotebookModel,
   action: actionTypes.FocusCellEditor
-) {
+): RecordOf<DocumentRecordProps> {
   return state.set("editorFocused", action.payload.id);
 }
 
 function focusNextCellEditor(
   state: NotebookModel,
   action: actionTypes.FocusNextCellEditor
-) {
-  const cellOrder: Immutable.List<CellId> = state.getIn([
-    "notebook",
-    "cellOrder"
-  ]);
+): RecordOf<DocumentRecordProps> {
+  const cellOrder: List<CellId> = state.getIn(["notebook", "cellOrder"]);
 
   const id = action.payload.id ? action.payload.id : state.get("editorFocused");
 
@@ -363,11 +415,8 @@ function focusNextCellEditor(
 function focusPreviousCellEditor(
   state: NotebookModel,
   action: actionTypes.FocusPreviousCellEditor
-) {
-  const cellOrder: Immutable.List<CellId> = state.getIn([
-    "notebook",
-    "cellOrder"
-  ]);
+): RecordOf<DocumentRecordProps> {
+  const cellOrder: List<CellId> = state.getIn(["notebook", "cellOrder"]);
   const curIndex = cellOrder.findIndex(
     (id: CellId) => id === action.payload.id
   );
@@ -376,10 +425,13 @@ function focusPreviousCellEditor(
   return state.set("editorFocused", cellOrder.get(nextIndex));
 }
 
-function moveCell(state: NotebookModel, action: actionTypes.MoveCell) {
+function moveCell(
+  state: NotebookModel,
+  action: actionTypes.MoveCell
+): RecordOf<DocumentRecordProps> {
   return state.updateIn(
     ["notebook", "cellOrder"],
-    (cellOrder: Immutable.List<CellId>) => {
+    (cellOrder: List<CellId>) => {
       const oldIndex = cellOrder.findIndex(
         (id: string) => id === action.payload.id
       );
@@ -397,11 +449,37 @@ function moveCell(state: NotebookModel, action: actionTypes.MoveCell) {
   );
 }
 
+function markCellAsDeleting(
+  state: NotebookModel,
+  action: actionTypes.MarkCellAsDeleting
+): RecordOf<DocumentRecordProps> {
+  const id = action.payload.id ? action.payload.id : state.cellFocused;
+  if (!id) {
+    return state;
+  }
+  return state.update("notebook", (notebook: ImmutableNotebook) =>
+    markCellDeleting(notebook, id)
+  );
+}
+
+function unmarkCellAsDeleting(
+  state: NotebookModel,
+  action: actionTypes.UnmarkCellAsDeleting
+): RecordOf<DocumentRecordProps> {
+  const id = action.payload.id ? action.payload.id : state.cellFocused;
+  if (!id) {
+    return state;
+  }
+  return state.update("notebook", (notebook: ImmutableNotebook) =>
+    markCellNotDeleting(notebook, id)
+  );
+}
+
 // DEPRECATION WARNING: The action type RemoveCell is being deprecated. Please use DeleteCell instead
 function deleteCellFromState(
   state: NotebookModel,
   action: actionTypes.DeleteCell | actionTypes.RemoveCell
-) {
+): RecordOf<DocumentRecordProps> {
   const id = action.payload.id ? action.payload.id : state.cellFocused;
   if (!id) {
     return state;
@@ -417,7 +495,7 @@ function deleteCellFromState(
 function createCellBelow(
   state: NotebookModel,
   action: actionTypes.CreateCellBelow
-) {
+): RecordOf<DocumentRecordProps> {
   const id = action.payload.id ? action.payload.id : state.cellFocused;
   if (!id) {
     return state;
@@ -427,7 +505,7 @@ function createCellBelow(
   const cell = cellType === "markdown" ? emptyMarkdownCell : emptyCodeCell;
   const cellId = uuid();
   return state.update("notebook", (notebook: ImmutableNotebook) => {
-    const index = notebook.get("cellOrder", Immutable.List()).indexOf(id) + 1;
+    const index = notebook.get("cellOrder", List()).indexOf(id) + 1;
     return insertCellAt(
       notebook,
       (cell as ImmutableMarkdownCell).set("source", source),
@@ -440,7 +518,7 @@ function createCellBelow(
 function createCellAbove(
   state: NotebookModel,
   action: actionTypes.CreateCellAbove
-) {
+): RecordOf<DocumentRecordProps> {
   const id = action.payload.id ? action.payload.id : state.cellFocused;
   if (!id) {
     return state;
@@ -450,10 +528,7 @@ function createCellAbove(
   const cell = cellType === "markdown" ? emptyMarkdownCell : emptyCodeCell;
   const cellId = uuid();
   return state.update("notebook", (notebook: ImmutableNotebook) => {
-    const cellOrder: Immutable.List<CellId> = notebook.get(
-      "cellOrder",
-      Immutable.List()
-    );
+    const cellOrder: List<CellId> = notebook.get("cellOrder", List());
     const index = cellOrder.indexOf(id);
     return insertCellAt(notebook, cell, cellId, index);
   });
@@ -462,7 +537,7 @@ function createCellAbove(
 function createCellAfter(
   state: NotebookModel,
   action: actionTypes.CreateCellAfter
-) {
+): RecordOf<DocumentRecordProps> {
   console.log(
     "DEPRECATION WARNING: This function is being deprecated. Please use createCellBelow() instead"
   );
@@ -475,7 +550,7 @@ function createCellAfter(
   const cell = cellType === "markdown" ? emptyMarkdownCell : emptyCodeCell;
   const cellId = uuid();
   return state.update("notebook", (notebook: ImmutableNotebook) => {
-    const index = notebook.get("cellOrder", Immutable.List()).indexOf(id) + 1;
+    const index = notebook.get("cellOrder", List()).indexOf(id) + 1;
     return insertCellAt(
       notebook,
       (cell as ImmutableMarkdownCell).set("source", source),
@@ -488,7 +563,7 @@ function createCellAfter(
 function createCellBefore(
   state: NotebookModel,
   action: actionTypes.CreateCellBefore
-) {
+): RecordOf<DocumentRecordProps> {
   console.log(
     "DEPRECATION WARNING: This function is being deprecated. Please use createCellAbove() instead"
   );
@@ -501,10 +576,7 @@ function createCellBefore(
   const cell = cellType === "markdown" ? emptyMarkdownCell : emptyCodeCell;
   const cellId = uuid();
   return state.update("notebook", (notebook: ImmutableNotebook) => {
-    const cellOrder: Immutable.List<CellId> = notebook.get(
-      "cellOrder",
-      Immutable.List()
-    );
+    const cellOrder: List<CellId> = notebook.get("cellOrder", List());
     const index = cellOrder.indexOf(id);
     return insertCellAt(notebook, cell, cellId, index);
   });
@@ -513,13 +585,10 @@ function createCellBefore(
 function createCellAppend(
   state: NotebookModel,
   action: actionTypes.CreateCellAppend
-) {
+): RecordOf<DocumentRecordProps> {
   const { cellType } = action.payload;
   const notebook: ImmutableNotebook = state.get("notebook");
-  const cellOrder: Immutable.List<CellId> = notebook.get(
-    "cellOrder",
-    Immutable.List()
-  );
+  const cellOrder: List<CellId> = notebook.get("cellOrder", List());
   const cell: ImmutableCell =
     cellType === "markdown" ? emptyMarkdownCell : emptyCodeCell;
   const index = cellOrder.count();
@@ -532,12 +601,12 @@ function acceptPayloadMessage(
   action: actionTypes.AcceptPayloadMessage
 ): NotebookModel {
   const id: string = action.payload.id;
-  const payload = action.payload.payload as PayloadMessage;
+  const payload: PayloadMessage = action.payload.payload;
 
   if (payload.source === "page") {
     // append pager
     return state.updateIn(["cellPagers", id], l =>
-      (l || Immutable.List()).push(payload.data)
+      (l || List()).push(payload.data)
     );
   } else if (payload.source === "set_next_input") {
     if (payload.replace) {
@@ -551,7 +620,6 @@ function acceptPayloadMessage(
       // these reducers should just handle the original action.
       return createCellBelow(state, {
         type: actionTypes.CREATE_CELL_BELOW,
-        // $FlowFixMe: Switch this over to creating a cell after without having to take an action
         payload: {
           cellType: "code",
           // TODO: is payload.text guaranteed to be defined?
@@ -569,7 +637,7 @@ function acceptPayloadMessage(
 function sendExecuteRequest(
   state: NotebookModel,
   action: actionTypes.SendExecuteRequest
-) {
+): RecordOf<DocumentRecordProps> {
   const id = action.payload.id ? action.payload.id : state.cellFocused;
   const contentRef = action.payload.contentRef;
   if (!id) {
@@ -585,7 +653,6 @@ function sendExecuteRequest(
   // these reducers should just handle the original action.
   return clearOutputs(state, {
     type: "CLEAR_OUTPUTS",
-    // $FlowFixMe: Switch this over to clearing outputs without having to take an action
     payload: {
       id,
       contentRef
@@ -596,8 +663,7 @@ function sendExecuteRequest(
 function setInCell(
   state: NotebookModel,
   action: actionTypes.SetInCell<string>
-) {
-  // $FlowFixMe: Flow is complaining because the first arg has unknown length?
+): RecordOf<DocumentRecordProps> {
   return state.setIn(
     ["notebook", "cellMap", action.payload.id].concat(action.payload.path),
     action.payload.value
@@ -607,27 +673,43 @@ function setInCell(
 function toggleCellOutputVisibility(
   state: NotebookModel,
   action: actionTypes.ToggleCellOutputVisibility
-) {
+): RecordOf<DocumentRecordProps> {
   const id = action.payload.id ? action.payload.id : state.cellFocused;
   if (!id) {
     return state;
   }
 
   return state.setIn(
-    ["notebook", "cellMap", id, "metadata", "outputHidden"],
-    !state.getIn(["notebook", "cellMap", id, "metadata", "outputHidden"])
+    ["notebook", "cellMap", id, "metadata", "jupyter", "outputs_hidden"],
+    !state.getIn([
+      "notebook",
+      "cellMap",
+      id,
+      "metadata",
+      "jupyter",
+      "outputs_hidden"
+    ])
   );
 }
 
-function unhideAll(state: NotebookModel, action: actionTypes.UnhideAll) {
+function unhideAll(
+  state: NotebookModel,
+  action: actionTypes.UnhideAll
+): RecordOf<DocumentRecordProps> {
+  const { outputHidden, inputHidden } = action.payload;
+  let metadataMixin = Map<string, boolean>();
+
+  if (outputHidden !== undefined) {
+    metadataMixin = metadataMixin.set("outputs_hidden", outputHidden);
+  }
+  if (inputHidden !== undefined) {
+    metadataMixin = metadataMixin.set("source_hidden", inputHidden);
+  }
+
   return state.updateIn(["notebook", "cellMap"], cellMap =>
     cellMap.map((cell: ImmutableCell) => {
       if ((cell as any).get("cell_type") === "code") {
-        return cell.mergeIn(["metadata"], {
-          // TODO: Verify that we convert to one namespace for hidden input/output
-          outputHidden: action.payload.outputHidden,
-          inputHidden: action.payload.inputHidden
-        });
+        return cell.mergeIn(["metadata", "jupyter"], metadataMixin);
       }
       return cell;
     })
@@ -637,67 +719,100 @@ function unhideAll(state: NotebookModel, action: actionTypes.UnhideAll) {
 function toggleCellInputVisibility(
   state: NotebookModel,
   action: actionTypes.ToggleCellInputVisibility
-) {
+): RecordOf<DocumentRecordProps> {
   const id = action.payload.id ? action.payload.id : state.cellFocused;
   if (!id) {
     return state;
   }
 
   return state.setIn(
-    ["notebook", "cellMap", id, "metadata", "inputHidden"],
-    !state.getIn(["notebook", "cellMap", id, "metadata", "inputHidden"])
+    ["notebook", "cellMap", id, "metadata", "jupyter", "source_hidden"],
+    !state.getIn([
+      "notebook",
+      "cellMap",
+      id,
+      "metadata",
+      "jupyter",
+      "source_hidden"
+    ])
   );
 }
 
 function updateCellStatus(
   state: NotebookModel,
   action: actionTypes.UpdateCellStatus
-) {
+): RecordOf<DocumentRecordProps> {
   const { id, status } = action.payload;
   return state.setIn(["transient", "cellMap", id, "status"], status);
 }
+
+function updateOutputMetadata(
+  state: NotebookModel,
+  action: actionTypes.UpdateOutputMetadata
+): RecordOf<DocumentRecordProps> {
+  const { id, metadata, index, mediaType } = action.payload;
+  const currentOutputs = state.getIn(["notebook", "cellMap", id, "outputs"]);
+
+  const updatedOutputs = currentOutputs.update(index, (item: any) =>
+    item.set(
+      "metadata",
+      fromJS({
+        [mediaType]: metadata
+      })
+    )
+  );
+
+  return state.setIn(["notebook", "cellMap", id, "outputs"], updatedOutputs);
+}
+
 function setLanguageInfo(
   state: NotebookModel,
   action: actionTypes.SetLanguageInfo
-) {
-  const langInfo = Immutable.fromJS(action.payload.langInfo);
+): RecordOf<DocumentRecordProps> {
+  const langInfo = fromJS(action.payload.langInfo);
   return state.setIn(["notebook", "metadata", "language_info"], langInfo);
 }
 
 function setKernelspecInfo(
   state: NotebookModel,
   action: actionTypes.SetKernelspecInfo
-) {
+): RecordOf<DocumentRecordProps> {
   const { kernelInfo } = action.payload;
-  return state
-    .setIn(
-      ["notebook", "metadata", "kernelspec"],
-      Immutable.fromJS({
-        name: kernelInfo.name,
-        language: kernelInfo.spec.language,
-        display_name: kernelInfo.spec.display_name
-      })
-    )
-    .setIn(["notebook", "metadata", "kernel_info", "name"], kernelInfo.name);
+  if (kernelInfo.spec) {
+    return state
+      .setIn(
+        ["notebook", "metadata", "kernelspec"],
+        fromJS({
+          name: kernelInfo.name,
+          language: kernelInfo.spec.language,
+          display_name: kernelInfo.spec.display_name
+        })
+      )
+      .setIn(["notebook", "metadata", "kernel_info", "name"], kernelInfo.name);
+  }
+  return state;
 }
 
 function overwriteMetadataField(
   state: NotebookModel,
   action: actionTypes.OverwriteMetadataField
-) {
+): RecordOf<DocumentRecordProps> {
   const { field, value } = action.payload;
-  return state.setIn(["notebook", "metadata", field], Immutable.fromJS(value));
+  return state.setIn(["notebook", "metadata", field], fromJS(value));
 }
 function deleteMetadataField(
   state: NotebookModel,
   action: actionTypes.DeleteMetadataField
-) {
+): RecordOf<DocumentRecordProps> {
   const { field } = action.payload;
   return state.deleteIn(["notebook", "metadata", field]);
 }
 
-function copyCell(state: NotebookModel, action: actionTypes.CopyCell) {
-  let id = action.payload.id || state.cellFocused;
+function copyCell(
+  state: NotebookModel,
+  action: actionTypes.CopyCell
+): RecordOf<DocumentRecordProps> {
+  const id = action.payload.id || state.cellFocused;
 
   const cell = state.getIn(["notebook", "cellMap", id]);
   if (!cell) {
@@ -706,7 +821,10 @@ function copyCell(state: NotebookModel, action: actionTypes.CopyCell) {
   return state.set("copied", cell);
 }
 
-function cutCell(state: NotebookModel, action: actionTypes.CutCell) {
+function cutCell(
+  state: NotebookModel,
+  action: actionTypes.CutCell
+): RecordOf<DocumentRecordProps> {
   const id = action.payload.id ? action.payload.id : state.cellFocused;
   if (!id) {
     return state;
@@ -726,7 +844,7 @@ function cutCell(state: NotebookModel, action: actionTypes.CutCell) {
     );
 }
 
-function pasteCell(state: NotebookModel) {
+function pasteCell(state: NotebookModel): RecordOf<DocumentRecordProps> {
   const copiedCell = state.get("copied");
 
   const pasteAfter = state.cellFocused;
@@ -747,7 +865,7 @@ function pasteCell(state: NotebookModel) {
 function changeCellType(
   state: NotebookModel,
   action: actionTypes.ChangeCellType
-) {
+): RecordOf<DocumentRecordProps> {
   const id = action.payload.id ? action.payload.id : state.cellFocused;
   if (!id) {
     return state;
@@ -755,7 +873,6 @@ function changeCellType(
 
   const { to } = action.payload;
 
-  // $FlowFixMe: flow types in immutable need to be updated
   const cell = state.getIn(["notebook", "cellMap", id]);
 
   const from = cell.cell_type;
@@ -809,7 +926,7 @@ function changeCellType(
 function toggleOutputExpansion(
   state: NotebookModel,
   action: actionTypes.ToggleCellExpansion
-) {
+): RecordOf<DocumentRecordProps> {
   const id = action.payload.id ? action.payload.id : state.cellFocused;
   if (!id) {
     return state;
@@ -817,11 +934,24 @@ function toggleOutputExpansion(
 
   return state.updateIn(
     ["notebook", "cellMap"],
-    (cells: Immutable.Map<CellId, ImmutableCell>) =>
+    (cells: Map<CellId, ImmutableCell>) =>
       cells.setIn(
         [id, "metadata", "outputExpanded"],
         !cells.getIn([id, "metadata", "outputExpanded"])
       )
+  );
+}
+
+function promptInputRequest(
+  state: NotebookModel,
+  action: actionTypes.PromptInputRequest
+): RecordOf<DocumentRecordProps> {
+  const { id, password, prompt } = action.payload;
+  return state.updateIn(["cellPrompts", id], prompts =>
+    prompts.push({
+      prompt,
+      password
+    })
   );
 }
 
@@ -838,6 +968,8 @@ type DocumentAction =
   | actionTypes.AppendOutput
   | actionTypes.UpdateDisplay
   | actionTypes.MoveCell
+  | actionTypes.MarkCellAsDeleting
+  | actionTypes.UnmarkCellAsDeleting
   | actionTypes.DeleteCell
   | actionTypes.RemoveCell
   | actionTypes.CreateCellBelow
@@ -848,6 +980,7 @@ type DocumentAction =
   | actionTypes.ToggleCellOutputVisibility
   | actionTypes.ToggleCellInputVisibility
   | actionTypes.UpdateCellStatus
+  | actionTypes.UpdateOutputMetadata
   | actionTypes.SetLanguageInfo
   | actionTypes.SetKernelspecInfo
   | actionTypes.OverwriteMetadataField
@@ -863,7 +996,8 @@ type DocumentAction =
   | actionTypes.RestartKernel
   | actionTypes.ClearAllOutputs
   | actionTypes.SetInCell<any>
-  | actionTypes.UnhideAll;
+  | actionTypes.UnhideAll
+  | actionTypes.PromptInputRequest;
 
 const defaultDocument: NotebookModel = makeDocumentRecord({
   notebook: emptyNotebook
@@ -872,7 +1006,7 @@ const defaultDocument: NotebookModel = makeDocumentRecord({
 export function notebook(
   state: NotebookModel = defaultDocument,
   action: DocumentAction
-) {
+): RecordOf<DocumentRecordProps> {
   switch (action.type) {
     case actionTypes.TOGGLE_TAG_IN_CELL:
       return toggleTagInCell(state, action);
@@ -905,6 +1039,10 @@ export function notebook(
       return setInCell(state, action);
     case actionTypes.MOVE_CELL:
       return moveCell(state, action);
+    case actionTypes.MARK_CELL_AS_DELETING:
+      return markCellAsDeleting(state, action);
+    case actionTypes.UNMARK_CELL_AS_DELETING:
+      return unmarkCellAsDeleting(state, action);
     case actionTypes.DELETE_CELL:
       return deleteCellFromState(state, action);
     case actionTypes.CREATE_CELL_BELOW:
@@ -936,6 +1074,8 @@ export function notebook(
       return acceptPayloadMessage(state, action);
     case actionTypes.UPDATE_CELL_STATUS:
       return updateCellStatus(state, action);
+    case actionTypes.UPDATE_OUTPUT_METADATA:
+      return updateOutputMetadata(state, action);
     case actionTypes.SET_LANGUAGE_INFO:
       return setLanguageInfo(state, action);
     case actionTypes.SET_KERNELSPEC_INFO:
@@ -956,6 +1096,8 @@ export function notebook(
       return toggleOutputExpansion(state, action);
     case actionTypes.UNHIDE_ALL:
       return unhideAll(state, action);
+    case actionTypes.PROMPT_INPUT_REQUEST:
+      return promptInputRequest(state, action);
     default:
       return state;
   }

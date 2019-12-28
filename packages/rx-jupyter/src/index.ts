@@ -1,15 +1,14 @@
-/**
- * @module rx-jupyter
- */
 import { ajax, AjaxResponse } from "rxjs/ajax";
-import { createAJAXSettings, ServerConfig } from "./base";
+import { ServerConfig } from "@nteract/types";
+import { createAJAXSettings } from "./base";
 
+import { Observable } from "rxjs";
+import * as bookstore from "./bookstore";
+import * as contents from "./contents";
 import * as kernels from "./kernels";
 import * as kernelspecs from "./kernelspecs";
 import * as sessions from "./sessions";
-import * as contents from "./contents";
 import * as terminals from "./terminals";
-import { Observable } from "rxjs";
 
 /**
  * Get the version of the API for a given server.
@@ -34,4 +33,4 @@ export const shutdown = (
 ): Observable<AjaxResponse> =>
   ajax(createAJAXSettings(serverConfig, "/api/shutdown", { method: "POST" }));
 
-export { kernels, kernelspecs, sessions, contents, terminals, ServerConfig };
+export { kernels, kernelspecs, sessions, bookstore, contents, terminals };

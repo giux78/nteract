@@ -1,10 +1,10 @@
-import * as actions from "../src/actions";
-import * as actionTypes from "../src/actionTypes";
 import {
   createContentRef,
   createKernelRef,
   LanguageInfoMetadata
 } from "@nteract/types";
+import * as actions from "../src/actions";
+import * as actionTypes from "../src/actionTypes";
 
 describe("setLanguageInfo", () => {
   test("creates a SET_LANGUAGE_INFO action", () => {
@@ -71,6 +71,50 @@ describe("unhideAll", () => {
       payload: {
         outputHidden: false,
         inputHidden: false,
+        contentRef
+      }
+    });
+
+    expect(
+      actions.unhideAll({ outputHidden: true, inputHidden: true, contentRef })
+    ).toEqual({
+      type: actionTypes.UNHIDE_ALL,
+      payload: {
+        outputHidden: true,
+        inputHidden: true,
+        contentRef
+      }
+    });
+
+    expect(
+      actions.unhideAll({ outputHidden: false, contentRef })
+    ).toEqual({
+      type: actionTypes.UNHIDE_ALL,
+      payload: {
+        outputHidden: false,
+        inputHidden: undefined,
+        contentRef
+      }
+    });
+
+    expect(
+      actions.unhideAll({ inputHidden: false, contentRef })
+    ).toEqual({
+      type: actionTypes.UNHIDE_ALL,
+      payload: {
+        outputHidden: undefined,
+        inputHidden: false,
+        contentRef
+      }
+    });
+
+    expect(
+      actions.unhideAll({ contentRef })
+    ).toEqual({
+      type: actionTypes.UNHIDE_ALL,
+      payload: {
+        outputHidden: undefined,
+        inputHidden: undefined,
         contentRef
       }
     });
@@ -491,7 +535,7 @@ describe("setNotificationSystem", () => {
   test("creates a SET_NOTIFICATION_SYSTEM action", () => {
     expect(actions.setNotificationSystem(null)).toEqual({
       type: actionTypes.SET_NOTIFICATION_SYSTEM,
-      notificationSystem: null
+      payload: { notificationSystem: null }
     });
   });
 });
@@ -588,11 +632,33 @@ describe("changeCellType", () => {
   });
 });
 
+describe("updateOutputMetadata", () => {
+  test("creates a UPDATE_OUTPUT_METADATA action", () => {
+    const contentRef = createContentRef();
+    expect(
+      actions.updateOutputMetadata({
+        id: "235",
+        contentRef,
+        metadata: { meta: "data" },
+        index: 0
+      })
+    ).toEqual({
+      type: actionTypes.UPDATE_OUTPUT_METADATA,
+      payload: {
+        id: "235",
+        contentRef,
+        metadata: { meta: "data" },
+        index: 0
+      }
+    });
+  });
+});
+
 describe("setGithubToken", () => {
   test("creates a SET_GITHUB_TOKEN action", () => {
     expect(actions.setGithubToken("token_string")).toEqual({
       type: actionTypes.SET_GITHUB_TOKEN,
-      githubToken: "token_string"
+      payload: { githubToken: "token_string" }
     });
   });
 });
@@ -640,6 +706,30 @@ describe("save", () => {
     expect(actions.saveFulfilled({ contentRef, model })).toEqual({
       type: actionTypes.SAVE_FULFILLED,
       payload: { contentRef, model: { fake: true } }
+    });
+  });
+
+  test("creates a CLOSE_NOTEBOOK action", () => {
+    const contentRef = createContentRef();
+    expect(actions.closeNotebook({ contentRef })).toEqual({
+      type: actionTypes.CLOSE_NOTEBOOK,
+      payload: { contentRef }
+    });
+  });
+
+  test("creates a DISPOSE_CONTENT action", () => {
+    const contentRef = createContentRef();
+    expect(actions.disposeContent({ contentRef })).toEqual({
+      type: actionTypes.DISPOSE_CONTENT,
+      payload: { contentRef }
+    });
+  });
+
+  test("creates a DISPOSE_KERNEL action", () => {
+    const kernelRef = createKernelRef();
+    expect(actions.disposeKernel({ kernelRef })).toEqual({
+      type: actionTypes.DISPOSE_KERNEL,
+      payload: { kernelRef }
     });
   });
 });

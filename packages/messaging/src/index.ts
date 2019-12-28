@@ -1,15 +1,12 @@
-/**
- * @module messaging
- */
-import { Observable, from, Subscriber } from "rxjs";
-import { filter, map, mergeMap } from "rxjs/operators";
-import { message, executeRequest } from "./messages";
-import { JupyterMessage, ExecuteRequest, MessageType } from "./types";
 import { PayloadMessage } from "@nteract/types";
+import { from, Observable, Subscriber } from "rxjs";
+import { filter, map, mergeMap } from "rxjs/operators";
+import { executeRequest, message } from "./messages";
+import { ExecuteRequest, JupyterMessage, MessageType } from "./types";
 
 export * from "./types";
 
-interface CreateMessageFields extends Partial<JupyterMessage> {
+export interface CreateMessageFields extends Partial<JupyterMessage> {
   header?: never;
 }
 
@@ -27,6 +24,62 @@ export function createExecuteRequest(code: string = ""): ExecuteRequest {
 }
 
 /**
+ * creates a comm open message
+ * @param  {string} comm_id       uuid
+ * @param  {string} target_name   comm handler
+ * @param  {any} data             up to the target handler
+ * @param  {string} target_module [Optional] used to select a module that is responsible for handling the target_name
+ * @return {jmp.Message}          Message ready to send on the shell channel
+ */
+export function createCommOpenMessage(
+  comm_id: string,
+  target_name: string,
+  data: any = {},
+  target_module: string
+) {
+  const msg = createMessage("comm_open", {
+    content: { comm_id, target_name, data }
+  });
+  if (target_module) {
+    msg.content.target_module = target_module;
+  }
+  return msg;
+}
+
+/**
+ * creates a comm message for sending to a kernel
+ * @param  {string}     comm_id    unique identifier for the comm
+ * @param  {Object}     data       any data to send for the comm
+ * @param  {Uint8Array} buffers    arbitrary binary data to send on the comm
+ * @return {jmp.Message}           jupyter message for comm_msg
+ */
+export function createCommMessage(
+  comm_id: string,
+  data: any = {},
+  buffers: Uint8Array = new Uint8Array([])
+) {
+  return createMessage("comm_msg", { content: { comm_id, data }, buffers });
+}
+
+/**
+ * creates a comm close message for sending to a kernel
+ * @param  {Object} parent_header    header from a parent jupyter message
+ * @param  {string}     comm_id      unique identifier for the comm
+ * @param  {Object}     data         any data to send for the comm
+ * @return {jmp.Message}             jupyter message for comm_msg
+ */
+export function createCommCloseMessage(
+  parent_header: any,
+  comm_id: string,
+  data: any = {}
+) {
+  return createMessage("comm_close", {
+    content: { comm_id, data },
+    parent_header
+  });
+}
+
+/**
  * operator for getting all messages that declare their parent header as
  * parentMessage's header.
  *
@@ -35,34 +88,64 @@ export function createExecuteRequest(code: string = ""): ExecuteRequest {
  * @returns A function that takes an Observable of kernel messages and returns
  * messages that are children of parentMessage.
  */
-export const childOf = (parentMessage: JupyterMessage) => (
-  source: Observable<JupyterMessage>
-) => {
-  const parentMessageID = parentMessage.header.msg_id;
-  return Observable.create((subscriber: Subscriber<JupyterMessage>) =>
-    source.subscribe(
-      msg => {
-        // strictly speaking, in order for the message to be a child of the
-        // parent message, it has to both be a message and have a parent to
-        // begin with
-        if (!msg || !msg.parent_header || !msg.parent_header.msg_id) {
-          if (process.env.DEBUG === "true") {
-            console.warn("no parent_header.msg_id on message", msg);
+export function childOf(
+  parentMessage: JupyterMessage
+): (source: Observable<JupyterMessage<MessageType, any>>) => any {
+  return (source: Observable<JupyterMessage>) => {
+    const parentMessageID: string = parentMessage.header.msg_id;
+    return Observable.create((subscriber: Subscriber<JupyterMessage>) =>
+      source.subscribe(
+        msg => {
+          // strictly speaking, in order for the message to be a child of the
+          // parent message, it has to both be a message and have a parent to
+          // begin with
+          if (!msg || !msg.parent_header || !msg.parent_header.msg_id) {
+            if (process.env.DEBUG === "true") {
+              console.warn("no parent_header.msg_id on message", msg);
+            }
+            return;
           }
-          return;
-        }
 
-        if (parentMessageID === msg.parent_header.msg_id) {
-          subscriber.next(msg);
-        }
-      },
-      // be sure to handle errors and completions as appropriate and
-      // send them along
-      err => subscriber.error(err),
-      () => subscriber.complete()
-    )
-  );
-};
+          if (parentMessageID === msg.parent_header.msg_id) {
+            subscriber.next(msg);
+          }
+        },
+        // be sure to handle errors and completions as appropriate and
+        // send them along
+        err => subscriber.error(err),
+        () => subscriber.complete()
+      )
+    );
+  };
+}
+
+/**
+ * operator for getting all messages with the given comm id
+ *
+ * @param comm_id The comm id that we are filtering by
+ *
+ * @returns A function that takes an Observable of kernel messages and returns
+ * messages that have the given comm id
+ */
+export function withCommId(
+  comm_id: string
+): (source: Observable<JupyterMessage<MessageType, any>>) => any {
+  return (source: Observable<JupyterMessage>) => {
+    return Observable.create((subscriber: Subscriber<JupyterMessage>) =>
+      source.subscribe(
+        msg => {
+          if (msg && msg.content && msg.content.comm_id === comm_id) {
+            subscriber.next(msg);
+          }
+        },
+        // be sure to handle errors and completions as appropriate and
+        // send them along
+        err => subscriber.error(err),
+        () => subscriber.complete()
+      )
+    );
+  };
+}
 
 /**
  * ofMessageType is an Rx Operator that filters on msg.header.msg_type
@@ -72,12 +155,12 @@ export const childOf = (parentMessage: JupyterMessage) => (
  *
  * @returns An Observable containing only messages of the specified types
  */
-export const ofMessageType = (
-  ...messageTypes: Array<string | [string]>
-): ((source: Observable<JupyterMessage>) => Observable<JupyterMessage>) => {
+export const ofMessageType = <T extends MessageType>(
+  ...messageTypes: Array<T | [T]>
+): ((source: Observable<JupyterMessage>) => Observable<JupyterMessage<T>>) => {
   // Switch to the splat mode
   if (messageTypes.length === 1 && Array.isArray(messageTypes[0])) {
-    return ofMessageType(...(messageTypes[0] as [string]));
+    return ofMessageType(...messageTypes[0]);
   }
 
   return (source: Observable<JupyterMessage>) =>
@@ -89,7 +172,7 @@ export const ofMessageType = (
             return;
           }
 
-          if (messageTypes.indexOf(msg.header.msg_type) !== -1) {
+          if (messageTypes.includes(msg.header.msg_type as any)) {
             subscriber.next(msg);
           }
         },
@@ -109,10 +192,12 @@ export const ofMessageType = (
  *
  * @returns Message with the associated output type
  */
-export const convertOutputMessageToNotebookFormat = (msg: JupyterMessage) => ({
-  ...msg.content,
-  output_type: msg.header.msg_type
-});
+export function convertOutputMessageToNotebookFormat(msg: JupyterMessage) {
+  return {
+    ...msg.content,
+    output_type: msg.header.msg_type
+  };
+}
 
 /**
  * Convert raw Jupyter messages that are output messages into nbformat style
@@ -152,8 +237,8 @@ export const payloads = () => (
   source.pipe(
     ofMessageType("execute_reply"),
     map(entry => entry.content.payload),
-    filter(Boolean),
-    mergeMap(p => from(p))
+    filter(p => !!p),
+    mergeMap((p: Observable<PayloadMessage>) => from(p))
   );
 
 /**
@@ -161,7 +246,7 @@ export const payloads = () => (
  */
 export const executionCounts = () => (source: Observable<JupyterMessage>) =>
   source.pipe(
-    ofMessageType("execute_input"),
+    ofMessageType("execute_input", "execute_reply"),
     map(entry => entry.content.execution_count)
   );
 
@@ -174,4 +259,14 @@ export const kernelStatuses = () => (source: Observable<JupyterMessage>) =>
     map(entry => entry.content.execution_state)
   );
 
+export const inputRequests = () => (source: Observable<JupyterMessage>) =>
+  source.pipe(
+    ofMessageType("input_request"),
+    map(entry => entry.content)
+  );
+
 export * from "./messages";
+
+import { encode, decode } from "./wire-protocol";
+
+export const wireProtocol = { encode, decode };

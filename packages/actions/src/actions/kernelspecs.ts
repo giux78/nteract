@@ -1,6 +1,3 @@
-/**
- * @module actions
- */
 import {
   ContentRef,
   HostRef,
@@ -30,7 +27,7 @@ export const fetchKernelspecsFulfilled = (payload: {
 
 export const fetchKernelspecsFailed = (payload: {
   kernelspecsRef: KernelspecsRef;
-  error: Object;
+  error: object;
 }): actionTypes.FetchKernelspecsFailed => ({
   type: actionTypes.FETCH_KERNELSPECS_FAILED,
   payload

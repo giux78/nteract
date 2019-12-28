@@ -1,30 +1,26 @@
 {
   "name": "@nteract/reducers",
-  "version": "1.0.0",
+  "version": "2.10.0-alpha.0",
   "description": "A set of reducers for use in nteract applications",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "scripts": {
-    "prepare": "npm run build",
-    "prepublishOnly": "npm run build",
-    "build": "npm run build:clean && npm run build:lib",
-    "build:clean": "tsc -b --clean",
-    "build:lib": "tsc -b",
-    "build:lib:watch": "tsc -b --watch",
-    "build:watch": "npm run build:clean && npm run build:lib:watch"
-  },
+  "nteractDesktop": "src/index.ts",
+  "scripts": {},
   "keywords": [],
   "author": "Safia Abdalla <safia@safia.rocks>",
   "license": "BSD-3-Clause",
   "dependencies": {
-    "@nteract/actions": "^1.0.0",
-    "@nteract/commutable": "^6.0.0-alpha.0",
-    "@nteract/types": "^3.1.0",
+    "@nteract/actions": "^2.10.0-alpha.0",
+    "@nteract/commutable": "^7.2.0-alpha.0",
+    "@nteract/types": "^4.4.3-alpha.0",
     "escape-carriage": "^1.3.0",
     "immutable": "^4.0.0-rc.12",
-    "lodash": "^4.17.11",
+    "lodash.has": "^4.5.2",
     "redux": "^4.0.1",
     "redux-immutable": "^4.0.0",
     "uuid": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/lodash.has": "^4.5.6"
   }
 }

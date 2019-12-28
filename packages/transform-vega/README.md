@@ -1,6 +1,6 @@
 # @nteract/transform-vega
 
-This package contains a React component for rendering interactive visualizations using [Vega](https://vega.github.io/vega/). This transform is exported as part of the [@nteract/transforms-full package](https://github.com/nteract/nteract/tree/master/packages/transforms-full).
+This package contains a React component for rendering interactive visualizations using [Vega](https://vega.github.io/vega/).
 
 ## Installation
 
@@ -14,7 +14,7 @@ $ npm install --save @nteract/transform-vega
 
 ## Usage
 
-The example below shows how we can can use this package to render a scatterplot.
+The example below shows how we can use this package to render a scatterplot.
 
 ```javascript
 import { Vega3 } from "@nteract/transform-vega";

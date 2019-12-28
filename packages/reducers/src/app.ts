@@ -1,35 +1,50 @@
-import { makeAppRecord } from "@nteract/types";
-import { AppRecord } from "@nteract/types";
+// Vendor modules
 import * as actions from "@nteract/actions";
 import {
-  SetNotificationSystemAction,
-  SetGithubTokenAction,
   Save,
   SaveFailed,
-  SaveFulfilled
+  SaveFulfilled,
+  SetAppHostAction,
+  SetGithubTokenAction,
+  SetNotificationSystemAction
 } from "@nteract/actions";
+import { AppRecord, AppRecordProps, makeAppRecord } from "@nteract/types";
+import { RecordOf } from "immutable";
 
-function setGithubToken(state: AppRecord, action: SetGithubTokenAction) {
-  return state.set("githubToken", action.githubToken);
+function setGithubToken(
+  state: AppRecord,
+  action: SetGithubTokenAction
+): RecordOf<AppRecordProps> {
+  return state.set("githubToken", action.payload.githubToken);
 }
 
-function save(state: AppRecord) {
+function save(state: AppRecord): RecordOf<AppRecordProps> {
   return state.set("isSaving", true);
 }
 
-function saveFailed(state: AppRecord) {
+function saveFailed(state: AppRecord): RecordOf<AppRecordProps> {
   return state.set("isSaving", false);
 }
 
-function saveFulfilled(state: AppRecord) {
+function saveFulfilled(state: AppRecord): RecordOf<AppRecordProps> {
   return state.set("isSaving", false).set("lastSaved", new Date());
 }
 
 function setNotificationsSystem(
   state: AppRecord,
   action: SetNotificationSystemAction
-) {
-  return state.set("notificationSystem", action.notificationSystem);
+): RecordOf<AppRecordProps> {
+  if (!action.payload || !action.payload.notificationSystem) {
+    return state;
+  }
+  return state.set("notificationSystem", action.payload.notificationSystem);
+}
+
+function setAppHost(
+  state: AppRecord,
+  action: SetAppHostAction
+): RecordOf<AppRecordProps> {
+  return state.set("host", action.payload);
 }
 
 export default function handleApp(
@@ -40,7 +55,8 @@ export default function handleApp(
     | Save
     | SaveFulfilled
     | SaveFailed
-) {
+    | SetAppHostAction
+): RecordOf<AppRecordProps> {
   switch (action.type) {
     case actions.SAVE:
       return save(state);
@@ -52,6 +68,8 @@ export default function handleApp(
       return setNotificationsSystem(state, action);
     case actions.SET_GITHUB_TOKEN:
       return setGithubToken(state, action);
+    case actions.SET_APP_HOST:
+      return setAppHost(state, action);
     default:
       return state;
   }

@@ -1,34 +1,39 @@
-/**
- * @module commutable
- */
 import { ImmutableOutput } from "./outputs";
 
 import { ExecutionCount } from "./primitives";
 
 import {
-  Map as ImmutableMap,
   List as ImmutableList,
+  Map as ImmutableMap,
   Record,
   RecordOf
 } from "immutable";
 
 /* CodeCell Record Boilerplate */
 
-type CodeCellParams = {
+export interface CodeCellParams {
   cell_type: "code";
   // Sadly untyped and widely unspecced
   metadata: ImmutableMap<string, any>;
   execution_count: ExecutionCount;
   source: string;
   outputs: ImmutableList<ImmutableOutput>;
-};
+}
+
 export const makeCodeCell = Record<CodeCellParams>({
   cell_type: "code",
   execution_count: null,
   metadata: ImmutableMap({
     collapsed: false,
-    outputHidden: false,
-    inputHidden: false
+    jupyter: ImmutableMap({
+      source_hidden: false,
+      outputs_hidden: false
+    }),
+    nteract: ImmutableMap({
+      transient: ImmutableMap({
+        deleting: false
+      })
+    })
   }),
   source: "",
   outputs: ImmutableList()
@@ -38,15 +43,21 @@ export type ImmutableCodeCell = RecordOf<CodeCellParams>;
 
 /* MarkdownCell Record Boilerplate */
 
-type MarkdownCellParams = {
+export interface MarkdownCellParams {
   cell_type: "markdown";
   source: string;
   metadata: ImmutableMap<string, any>;
-};
+}
 
 export const makeMarkdownCell = Record<MarkdownCellParams>({
   cell_type: "markdown",
-  metadata: ImmutableMap(),
+  metadata: ImmutableMap({
+    nteract: ImmutableMap({
+      transient: ImmutableMap({
+        deleting: false
+      })
+    })
+  }),
   source: ""
 });
 
@@ -54,15 +65,21 @@ export type ImmutableMarkdownCell = RecordOf<MarkdownCellParams>;
 
 /* RawCell Record Boilerplate */
 
-type RawCellParams = {
+export interface RawCellParams {
   cell_type: "raw";
   source: string;
   metadata: ImmutableMap<string, any>;
-};
+}
 
 export const makeRawCell = Record<RawCellParams>({
   cell_type: "raw",
-  metadata: ImmutableMap(),
+  metadata: ImmutableMap({
+    nteract: ImmutableMap({
+      transient: ImmutableMap({
+        deleting: false
+      })
+    })
+  }),
   source: ""
 });
 

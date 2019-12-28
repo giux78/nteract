@@ -1,6 +1,6 @@
-import * as React from "react";
 import { mount } from "enzyme";
 import toJson from "enzyme-to-json";
+import * as React from "react";
 import renderer from "react-test-renderer";
 
 import { Media } from "../src";
@@ -124,6 +124,18 @@ describe("Plain", () => {
     const data = "The text in Spain is mainly plain";
     const component = mount(<Media.Plain data={data} />);
     expect(toJson(component)).toMatchSnapshot();
+  });
+  it("should render urls as links", () => {
+    const data = "Let's go to https://google.com today!";
+    const component = mount(<Media.Plain data={data} />);
+    expect(toJson(component)).toMatchSnapshot();
+    expect(component.find("a").prop("href")).toEqual("https://google.com");
+  });
+  it("should render urls on a separate line as links", () => {
+    const data = "Let's go to\nhttps://google.com\ntoday!";
+    const component = mount(<Media.Plain data={data} />);
+    expect(toJson(component)).toMatchSnapshot();
+    expect(component.find("a").prop("href")).toEqual("https://google.com");
   });
 });
 

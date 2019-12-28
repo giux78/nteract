@@ -1,6 +1,6 @@
 {
   "name": "nteract",
-  "version": "0.12.3",
+  "version": "0.20.0-alpha.0",
   "description": "Interactive literate coding notebook!",
   "main": "./lib/webpacked-main.js",
   "repository": "nteract/nteract",
@@ -30,7 +30,8 @@
     "start": "npm run spawn",
     "prespawn": "npm run install:app-deps",
     "spawn": "cross-env NODE_ENV=development electron .",
-    "spawn:debug": "cross-env DEBUG=true NODE_ENV=development electron .",
+    "prespawn:debug": "npm run install:app-deps",
+    "spawn:debug": "cross-env DEBUG=true ELECTRON_ENABLE_LOGGING=1 NODE_ENV=development electron .",
     "prebuild": "rimraf lib",
     "build": "webpack --config webpack.dev.js --progress --colors",
     "build:clean": "rimraf lib dist",
@@ -83,11 +84,11 @@
         "AppImage",
         "tar.gz"
       ],
+      "executableName": "nteract",
       "desktop": {
         "Comment": "Interactive literate coding notebook",
-        "Exec": "/opt/nteract/nteract %U",
         "Icon": "nteract",
-        "MimeType": "application/x-ipynb+json",
+        "MimeType": "application/x-ipynb+json;",
         "Name": "nteract",
         "Path": "/opt/nteract/",
         "StartupNotify": "true",
@@ -104,8 +105,7 @@
     ],
     "extraResources": [
       "bin"
-    ],
-    "npmSkipBuildFromSource": true
+    ]
   },
   "jest": {
     "setupFiles": [
@@ -113,13 +113,20 @@
     ]
   },
   "dependencies": {
-    "@nteract/examples": "3.0.0",
-    "ijavascript": "lgeiger/ijavascript",
+    "@nteract/examples": "3.1.1",
+    "ijavascript": "^5.2.0",
     "jmp": "^2.0.0",
+    "lodash.sample": "^4.2.1",
+    "lodash.sortby": "^4.7.0",
+    "lodash.throttle": "^4.1.1",
     "mathjax-electron": "^3.0.0",
     "nteract-assets": "^4.0.0"
   },
   "devDependencies": {
-    "electron": "3.0.10"
+    "@types/lodash.sample": "^4.2.6",
+    "@types/lodash.sortby": "^4.7.6",
+    "@types/lodash.throttle": "^4.1.6",
+    "electron": "5.0.13",
+    "file-loader": "^5.0.0"
   }
 }

@@ -1,28 +1,30 @@
-/**
- * @module epics
- */
-import { Observable, Observer, of, empty, merge } from "rxjs";
-import { createMessage, childOf, ofMessageType } from "@nteract/messaging";
-import { Channels, JupyterMessage } from "@nteract/messaging";
 import { ImmutableNotebook } from "@nteract/commutable";
 import {
+  Channels,
+  childOf,
+  createMessage,
+  JupyterMessage,
+  ofMessageType
+} from "@nteract/messaging";
+import { ActionsObservable, ofType, StateObservable } from "redux-observable";
+import { empty, merge, Observable, Observer, of } from "rxjs";
+import {
+  catchError,
+  concatMap,
   filter,
+  first,
   map,
   mergeMap,
-  concatMap,
-  catchError,
-  first,
   switchMap,
   take,
+  takeUntil,
   timeout
 } from "rxjs/operators";
-import { ActionsObservable, ofType } from "redux-observable";
 
-import { ContentRef, KernelRef } from "@nteract/types";
-import { createKernelRef } from "@nteract/types";
-import * as selectors from "@nteract/selectors";
 import * as actions from "@nteract/actions";
-import { AppState, KernelInfo } from "@nteract/types";
+import * as selectors from "@nteract/selectors";
+import { ContentRef, KernelRef, AppState, KernelInfo } from "@nteract/types";
+import { createKernelRef } from "@nteract/types";
 
 const path = require("path");
 
@@ -32,20 +34,35 @@ const path = require("path");
  * @oaram  {ActionObservable}  action$ ActionObservable for LAUNCH_KERNEL_SUCCESSFUL action
  */
 export const watchExecutionStateEpic = (
-  action$: ActionsObservable<actions.NewKernelAction>
+  action$: ActionsObservable<
+    actions.NewKernelAction | actions.KillKernelSuccessful
+  >
 ) =>
   action$.pipe(
     ofType(actions.LAUNCH_KERNEL_SUCCESSFUL),
-    switchMap((action: actions.NewKernelAction) =>
-      action.payload.kernel.channels.pipe(
-        filter((msg: JupyterMessage) => msg.header.msg_type === "status"),
-        map((msg: JupyterMessage) =>
-          actions.setExecutionState({
-            kernelStatus: msg.content.execution_state,
-            kernelRef: action.payload.kernelRef
-          })
+    switchMap(
+      (action: actions.NewKernelAction | actions.KillKernelSuccessful) =>
+        (action as actions.NewKernelAction).payload.kernel.channels.pipe(
+          filter((msg: JupyterMessage) => msg.header.msg_type === "status"),
+          map((msg: JupyterMessage) =>
+            actions.setExecutionState({
+              kernelStatus: msg.content.execution_state,
+              kernelRef: (action as actions.NewKernelAction).payload.kernelRef
+            })
+          ),
+          takeUntil(
+            action$.pipe(
+              ofType(actions.KILL_KERNEL_SUCCESSFUL),
+              filter(
+                (
+                  killAction:
+                    | actions.KillKernelSuccessful
+                    | actions.NewKernelAction
+                ) => killAction.payload.kernelRef === action.payload.kernelRef
+              )
+            )
+          )
         )
-      )
     )
   );
 
@@ -58,7 +75,8 @@ export const watchExecutionStateEpic = (
 export function acquireKernelInfo(
   channels: Channels,
   kernelRef: KernelRef,
-  contentRef: ContentRef
+  contentRef: ContentRef,
+  state: AppState
 ) {
   const message = createMessage("kernel_info_request");
 
@@ -85,18 +103,39 @@ export function acquireKernelInfo(
         nbconvertExporter: l.nbconvert_exporter
       };
 
-      return of(
-        // The original action we were using
-        actions.setLanguageInfo({
-          langInfo: msg.content.language_info,
-          kernelRef,
-          contentRef
-        }),
-        actions.setKernelInfo({
-          kernelRef,
-          info
-        })
-      );
+      let result;
+      if (!c.protocol_version.startsWith("5")) {
+        result = [
+          actions.launchKernelFailed({
+            kernelRef,
+            contentRef,
+            error: new Error(
+              "The kernel that you are attempting to launch does not support the latest version (v5) of the messaging protocol."
+            )
+          })
+        ];
+      } else {
+        const kernelspec = selectors.kernelspecByName(state, { name: l.name });
+        const kernelInfo = { name: l.name, spec: kernelspec };
+        result = [
+          // The original action we were using
+          actions.setLanguageInfo({
+            langInfo: msg.content.language_info,
+            kernelRef,
+            contentRef
+          }),
+          actions.setKernelInfo({
+            kernelRef,
+            info
+          }),
+          actions.setKernelspecInfo({
+            contentRef,
+            kernelInfo
+          })
+        ];
+      }
+
+      return of(...result);
     })
   );
 
@@ -113,7 +152,8 @@ export function acquireKernelInfo(
  * @param  {ActionObservable}  The action type
  */
 export const acquireKernelInfoEpic = (
-  action$: ActionsObservable<actions.NewKernelAction>
+  action$: ActionsObservable<actions.NewKernelAction>,
+  state$: StateObservable<AppState>
 ) =>
   action$.pipe(
     ofType(actions.LAUNCH_KERNEL_SUCCESSFUL),
@@ -125,7 +165,7 @@ export const acquireKernelInfoEpic = (
           contentRef
         }
       } = action;
-      return acquireKernelInfo(channels, kernelRef, contentRef);
+      return acquireKernelInfo(channels, kernelRef, contentRef, state$.value);
     })
   );
 
@@ -192,6 +232,10 @@ export const launchKernelWhenNotebookSetEpic = (
     })
   );
 
+/**
+ * Restarts a Jupyter kernel in the local scenario, where a restart requires
+ * killing the existing kernel process and starting an ew one.
+ */
 export const restartKernelEpic = (
   action$: ActionsObservable<actions.RestartKernel | actions.NewKernelAction>,
   state$: any,
@@ -202,14 +246,33 @@ export const restartKernelEpic = (
     concatMap((action: actions.RestartKernel | actions.NewKernelAction) => {
       const state = state$.value;
 
-      const oldKernelRef = action.payload.kernelRef;
-      const oldKernel = selectors.kernel(state, { kernelRef: oldKernelRef });
+      const oldKernelRef = selectors.kernelRefByContentRef(state$.value, {
+        contentRef: action.payload.contentRef
+      });
 
       const notificationSystem = selectors.notificationSystem(state);
+
+      if (!oldKernelRef) {
+        notificationSystem.addNotification({
+          title: "Failure to Restart",
+          message: "Unable to restart kernel, please select a new kernel.",
+          dismissible: true,
+          position: "tr",
+          level: "error"
+        });
+        return empty();
+      }
+
+      const oldKernel = selectors.kernel(state, { kernelRef: oldKernelRef });
+
+      if (oldKernel && oldKernel.type === "websocket") {
+        return empty();
+      }
+
       if (!oldKernelRef || !oldKernel) {
         notificationSystem.addNotification({
           title: "Failure to Restart",
-          message: `Unable to restart kernel, please select a new kernel.`,
+          message: "Unable to restart kernel, please select a new kernel.",
           dismissible: true,
           position: "tr",
           level: "error"
@@ -277,7 +340,7 @@ export const restartKernelEpic = (
         catchError(error => {
           return of(
             actions.restartKernelFailed({
-              error: error,
+              error,
               kernelRef: newKernelRef,
               contentRef: initiatingContentRef
             })

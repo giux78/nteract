@@ -1,13 +1,15 @@
-/**
- * @module messaging
- */
 import uuid from "uuid/v4";
 import {
+  BasicOutputMessageContent,
+  ExecuteRequest,
   JupyterMessage,
-  MessageType,
   JupyterMessageHeader,
-  ExecuteRequest
+  MessageType,
+  UpdateDisplayData,
+  UpdateDisplayDataContent
 } from "./types";
+
+export type Channel = "shell" | "iopub" | "stdin";
 
 /**
  * Returns which channel, iopub or stdin or shell, to send a kernel message
@@ -17,7 +19,7 @@ import {
  *
  * @returns The channel to send a kernel message through
  */
-function whichChannel(messageType?: MessageType): string {
+function whichChannel(messageType?: MessageType): Channel {
   switch (messageType) {
     case "execute_request":
     case "inspect_request":
@@ -75,7 +77,7 @@ export function message<MT extends MessageType>(
   header: { msg_type: MT; username?: string; session?: string },
   content: object = {}
 ): JupyterMessage<MT> {
-  const channel = whichChannel(header.msg_type);
+  const channel: Channel = whichChannel(header.msg_type);
   return {
     header: {
       msg_id: uuid(),
@@ -110,9 +112,9 @@ function createHeader<MT extends MessageType>(
     msg_id: uuid(),
     date: new Date().toISOString(),
     version: "5.2",
-    msg_type: msg_type,
+    msg_type,
 
-    // These fields get overriden by enchannel implementations, we supply them
+    // These fields get overridden by enchannel implementations, we supply them
     // as a fallback here
     username: "nteract",
     session: uuid()
@@ -155,7 +157,7 @@ export function executeRequest(
     stop_on_error?: boolean;
   } = {}
 ): ExecuteRequest {
-  const channel = whichChannel("execute_request");
+  const channel: Channel = whichChannel("execute_request");
 
   return {
     header: createHeader("execute_request"),
@@ -166,7 +168,7 @@ export function executeRequest(
       silent: false,
       store_history: true,
       user_expressions: {},
-      allow_stdin: false,
+      allow_stdin: true,
       stop_on_error: false,
       ...options
     },
@@ -181,7 +183,7 @@ export function executeRequest(
  * Creates a display_data message.
  *
  * ref: http://jupyter-client.readthedocs.io/en/stable/messaging.html#display-data
- * > displayData({username: 'rgbkrk', session: '123'}, {data: {'text/html': '<b>sup</b>'}})
+ * > displayData({username: 'rgbkrk', session: '123'}, {data: {'text/html': '<b>sup</b>'}}, "display_data")
  * { header:
  *    { msg_id: '24e95ce7-73d5-4c5f-9ef0-ff8547779690',
  *      date: 2017-10-23T22:57:58.704Z,
@@ -196,14 +198,29 @@ export function executeRequest(
  *      metadata: {},
  *      transient: {} } }
  */
+
+// Overload 1: with second parameter
+export function displayData<
+  C extends BasicOutputMessageContent,
+  T extends MessageType
+>(content: C, msg_type: T): JupyterMessage<T, C>;
+
+// Overload 2: without second parameter (required to get TS to behave)
+export function displayData<C extends BasicOutputMessageContent>(
+  content: C,
+  msg_type?: undefined
+): JupyterMessage<"display_data", C>;
+
+// The actual displayData function; generics should infer correctly, based on
+// the overloads above.
 export function displayData(
-  content: {
-    data?: Object;
-    metadata?: Object;
-    transient?: Object;
-  },
-  msg_type: MessageType = "display_data"
-) {
+  content: BasicOutputMessageContent,
+  msg_type?: MessageType
+): JupyterMessage {
+  if (msg_type === undefined) {
+    msg_type = "display_data";
+  }
+
   return message(
     {
       msg_type
@@ -222,14 +239,11 @@ export function displayData(
  *
  * http://jupyter-client.readthedocs.io/en/stable/messaging.html#update-display-data
  */
-export function updateDisplayData(content: {
-  data?: Object;
-  metadata?: Object;
-  transient?: Object;
-}) {
+export function updateDisplayData(
+  content: UpdateDisplayDataContent
+): UpdateDisplayData {
   // TODO: Enforce the transient display_id here?
-  const m = displayData(content, "update_display_data");
-  return m;
+  return displayData(content, "update_display_data");
 }
 
 /**
@@ -239,9 +253,9 @@ export function updateDisplayData(content: {
  */
 export function executeResult(content: {
   execution_count: number;
-  data?: Object;
-  metadata?: Object;
-  transient?: Object;
+  data?: object;
+  metadata?: object;
+  transient?: object;
 }) {
   // TODO: Enforce the transient display_id here?
   const m = displayData(content, "execute_result");
@@ -258,7 +272,7 @@ export function executeResult(content: {
 export function error(content: {
   ename?: string;
   evalue?: string;
-  traceback?: Array<string>;
+  traceback?: string[];
 }) {
   return message(
     {
@@ -299,7 +313,7 @@ export function stream(content: { name: "stdout" | "stderr"; text: string }) {
 export function executeReply(content: {
   status: string;
   execution_count: number;
-  payload?: Array<object>;
+  payload?: object[];
   user_expressions?: object;
 }) {
   // TODO: This function could be better typed. It's a bit dual headed though since:
@@ -376,6 +390,12 @@ export function kernelInfoRequest() {
  */
 export function shutdownRequest(
   content: { restart?: boolean } = { restart: false }
-) {
+): JupyterMessage<"shutdown_request", { restart?: boolean }> {
   return message({ msg_type: "shutdown_request" }, content);
+}
+
+export function inputReply(content: {
+  value: string;
+}): JupyterMessage<"input_reply"> {
+  return message({ msg_type: "input_reply" }, content);
 }

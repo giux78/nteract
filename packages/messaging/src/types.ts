@@ -1,17 +1,20 @@
-/**
- * @module messaging
- */
+import { JSONObject, MediaBundle } from "@nteract/commutable";
 import { Subject } from "rxjs";
 
 export type MessageType =
   | "execute_request"
   | "inspect_request"
+  | "inspect_reply"
   | "kernel_info_request"
+  | "kernel_info_reply"
   | "complete_request"
   | "history_request"
+  | "history_reply"
   | "is_complete_request"
   | "comm_info_request"
+  | "comm_info_reply"
   | "shutdown_request"
+  | "shutdown_reply"
   | "shell"
   | "display_data"
   | "stream"
@@ -28,7 +31,11 @@ export type MessageType =
   | "comm_open"
   | "comm_msg"
   | "comm_close"
-  | "execute_reply";
+  | "complete_reply"
+  | "is_complete_reply"
+  | "execute_reply"
+  | "interrupt_request"
+  | "interrupt_reply";
 
 export interface JupyterMessageHeader<MT extends MessageType = MessageType> {
   msg_id: string;
@@ -64,6 +71,24 @@ export interface ExecuteMessageContent {
 export type ExecuteRequest = JupyterMessage<
   "execute_request",
   ExecuteMessageContent
+>;
+
+export interface BasicOutputMessageContent {
+  data?: object;
+  metadata?: object;
+  transient?: object;
+}
+
+export interface UpdateDisplayDataContent extends BasicOutputMessageContent {
+  output_type: "update_display_data";
+  data: MediaBundle;
+  metadata: JSONObject;
+  transient?: { display_id?: string };
+}
+
+export type UpdateDisplayData = JupyterMessage<
+  "update_display_data",
+  UpdateDisplayDataContent
 >;
 
 export type Channels = Subject<JupyterMessage>;

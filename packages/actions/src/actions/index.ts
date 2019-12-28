@@ -1,20 +1,27 @@
-/**
- * @module actions
- */
-import { CellId, MimeBundle, Output, JSONObject } from "@nteract/commutable";
-
-import * as actionTypes from "../actionTypes";
-
+// Vendor modules
+import {
+  CellId,
+  JSONObject,
+  MediaBundle,
+  OnDiskOutput
+} from "@nteract/commutable";
 import {
   ContentRef,
+  HeaderDataProps,
+  HostRecord,
   HostRef,
   KernelRef,
   LanguageInfoMetadata,
   PayloadMessage
 } from "@nteract/types";
 
+// Local modules
+import * as actionTypes from "../actionTypes";
+
+export * from "./bookstore";
 export * from "./cells";
 export * from "./contents";
+export * from "./hosts";
 export * from "./kernels";
 export * from "./kernelspecs";
 
@@ -27,18 +34,13 @@ export const closeModal = () => ({
   type: actionTypes.CLOSE_MODAL
 });
 
-export const addHost = (payload: {
-  hostRef: HostRef;
-  host: {
-    id?: string;
-    type: "jupyter" | "local";
-    defaultKernelName: string;
-    token?: string;
-    serverUrl?: string;
-    crossDomain?: boolean;
-  };
-}) => ({
+export const addHost = (payload: { hostRef: HostRef; host: HostRecord }) => ({
   type: actionTypes.ADD_HOST,
+  payload
+});
+
+export const removeHost = (payload: { hostRef: HostRef }) => ({
+  type: actionTypes.REMOVE_HOST,
   payload
 });
 
@@ -49,6 +51,15 @@ export function overwriteMetadataField(payload: {
 }): actionTypes.OverwriteMetadataField {
   return {
     type: actionTypes.OVERWRITE_METADATA_FIELD,
+    payload
+  };
+}
+
+export function overwriteMetadataFields(
+  payload: Partial<HeaderDataProps> & Partial<{ contentRef: ContentRef }>
+): actionTypes.OverwriteMetadataFields {
+  return {
+    type: actionTypes.OVERWRITE_METADATA_FIELDS,
     payload
   };
 }
@@ -68,7 +79,9 @@ export function setNotificationSystem(
 ): actionTypes.SetNotificationSystemAction {
   return {
     type: actionTypes.SET_NOTIFICATION_SYSTEM,
-    notificationSystem
+    payload: {
+      notificationSystem
+    }
   };
 }
 
@@ -77,7 +90,9 @@ export function setGithubToken(
 ): actionTypes.SetGithubTokenAction {
   return {
     type: actionTypes.SET_GITHUB_TOKEN,
-    githubToken
+    payload: {
+      githubToken
+    }
   };
 }
 
@@ -87,8 +102,10 @@ export function setConfigAtKey<T>(
 ): actionTypes.SetConfigAction<T> {
   return {
     type: actionTypes.SET_CONFIG_AT_KEY,
-    key,
-    value
+    payload: {
+      key,
+      value
+    }
   };
 }
 
@@ -113,14 +130,22 @@ export function toggleOutputExpansion(payload: {
 }
 
 export const loadConfig = () => ({ type: actionTypes.LOAD_CONFIG });
+
 export const saveConfig = () => ({ type: actionTypes.SAVE_CONFIG });
+
 export const doneSavingConfig = () => ({
   type: actionTypes.DONE_SAVING_CONFIG
 });
 
-export const configLoaded = (config: any) => ({
-  type: actionTypes.MERGE_CONFIG,
-  config
+interface ConfigPayload {
+  config: { [key: string]: string; theme: string };
+}
+
+export const configLoaded = (
+  payload: ConfigPayload
+): actionTypes.MergeConfigAction => ({
+  payload,
+  type: actionTypes.MERGE_CONFIG
 });
 
 /**
@@ -165,7 +190,7 @@ export function commMessageAction(message: any) {
 
 export function appendOutput(payload: {
   id: CellId;
-  output: Output;
+  output: OnDiskOutput;
   contentRef: ContentRef;
 }): actionTypes.AppendOutput {
   return {
@@ -189,7 +214,8 @@ export function acceptPayloadMessage(payload: {
 
 export function updateDisplay(payload: {
   content: {
-    data: MimeBundle;
+    output_type: "update_display_data";
+    data: MediaBundle;
     metadata: JSONObject;
     transient: { display_id: string };
   };
@@ -228,6 +254,24 @@ export function publishGist(payload: {
 }): actionTypes.PublishGist {
   return {
     type: actionTypes.PUBLISH_GIST,
+    payload
+  };
+}
+
+export function removeTransform(
+  payload: actionTypes.RemoveTransform["payload"]
+): actionTypes.RemoveTransform {
+  return {
+    type: actionTypes.REMOVE_TRANSFORM,
+    payload
+  };
+}
+
+export function addTransform(
+  payload: actionTypes.AddTransform["payload"]
+): actionTypes.AddTransform {
+  return {
+    type: actionTypes.ADD_TRANSFORM,
     payload
   };
 }

@@ -1,18 +1,14 @@
-import { combineReducers } from "redux-immutable";
-import { Action } from "redux";
-
+// Vendor modules
 import * as actions from "@nteract/actions";
-
 import { makeStateRecord } from "@nteract/types";
+import { Action } from "redux";
+import { combineReducers } from "redux-immutable";
 
-import { communication } from "./communication";
+// Local modules
 import { entities } from "./entities";
 
-// TODO: #2618: This should at a minimum be moved into a contents entry.
-// TODO: This is temporary until we have sessions in place. Ideally, we point to
-// a document, which knows about its session and that session knows about its
-// kernel. For now, we need to keep a reference to the currently targeted kernel
-// around.
+// TODO: This can be removed once the work to rely on deriving KernelRefs
+// ContentRefs is complete.
 const kernelRef = (state = "", action: Action) => {
   let typedAction;
   switch (action.type) {
@@ -44,7 +40,6 @@ const currentKernelspecsRef = (state = "", action: Action) => {
 
 const core = combineReducers(
   {
-    communication,
     currentKernelspecsRef,
     entities,
     kernelRef
