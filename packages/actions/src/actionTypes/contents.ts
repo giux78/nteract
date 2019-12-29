@@ -173,3 +173,20 @@ export interface UpdateFileText {
     contentRef: ContentRef;
   };
 }
+
+export const CLOSE_NOTEBOOK = "CLOSE_NOTEBOOK";
+export interface CloseNotebook {
+  type: "CLOSE_NOTEBOOK";
+  payload: {
+    contentRef: ContentRef;
+  };
+}
+
+export const DISPOSE_CONTENT = "DISPOSE_CONTENT";
+export interface DisposeContent {
+  type: "DISPOSE_CONTENT";
+  payload: {
+    contentRef: ContentRef;
+  }
+}
+

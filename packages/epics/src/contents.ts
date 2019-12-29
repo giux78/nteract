@@ -14,7 +14,8 @@ import {
   mergeMap,
   pluck,
   switchMap,
-  tap
+  tap,
+  take
 } from "rxjs/operators";
 
 import * as actions from "@nteract/actions";
@@ -26,7 +27,8 @@ import {
   DummyContentRecordProps,
   FileContentRecordProps,
   NotebookContentRecordProps,
-  ServerConfig
+  ServerConfig,
+  JupyterHostRecord
 } from "@nteract/types";
 import { AjaxResponse } from "rxjs/ajax";
 
@@ -38,7 +40,7 @@ import { existsSync } from "fs";
 export function updateContentEpic(
   action$: ActionsObservable<actions.ChangeContentName>,
   state$: StateObservable<AppState>
-): Observable<{}> {
+): Observable<unknown> {
   return action$.pipe(
     ofType(actions.CHANGE_CONTENT_NAME),
     switchMap(action => {
@@ -110,7 +112,7 @@ export function fetchContentEpic(
     | actions.FetchContentFulfilled
   >,
   state$: StateObservable<AppState>
-): Observable<{}> {
+): Observable<unknown> {
   return action$.pipe(
     ofType(actions.FETCH_CONTENT),
     switchMap(action => {
@@ -378,7 +380,7 @@ export function saveContentEpic(
           // we saved.
           return contents.get(serverConfig, filepath, { content: 0 }).pipe(
             // Make sure that the modified time is within some delta
-            mergeMap(xhr => {
+            mergeMap((xhr: AjaxResponse) => {
               if (xhr.status !== 200) {
                 throw new Error(xhr.response.toString());
               }
@@ -408,11 +410,48 @@ export function saveContentEpic(
               }
 
               return contents.save(serverConfig, filepath, saveModel).pipe(
-                map((xhr: AjaxResponse) => {
-                  return actions.saveFulfilled({
-                    contentRef: action.payload.contentRef,
-                    model: xhr.response
-                  });
+                mergeMap((saveXhr: AjaxResponse) => {
+                  const pollIntervalMs = 500;
+                  const maxPollNb = 4;
+
+                  // Last_modified value from jupyter server is unreliable: https://github.com/nteract/nteract/issues/4583
+                  // Check last-modified until value is stable.
+                  return interval(pollIntervalMs)
+                    .pipe(take(maxPollNb))
+                    .pipe(
+                      mergeMap(x =>
+                        contents.get(serverConfig, filepath, { content: 0 }).pipe(
+                          map((xhr: AjaxResponse) => {
+                            if (xhr.status !== 200 || typeof xhr.response === "string") {
+                              return undefined;
+                            }
+                            const model = xhr.response;
+                            const lastModified = model.last_modified;
+                            // Return last modified
+                            return lastModified;
+                          })
+                        )
+                      ),
+                      distinctUntilChanged(),
+                      mergeMap(lastModified => {
+                        if (!lastModified) {
+                          // Don't do anything special
+                          return of(actions.saveFulfilled({
+                            contentRef: action.payload.contentRef,
+                            model: saveXhr.response
+                          }));
+                        }
+
+                        // Update lastModified with the correct value
+                        return of(actions.saveFulfilled({
+                          contentRef: action.payload.contentRef,
+                          model: {
+                            ...saveXhr.response,
+                            last_modified: lastModified
+                          }
+                        }));
+                      })
+                    );
                 }),
                 catchError((error: Error) =>
                   of(
@@ -506,6 +545,22 @@ export function saveAsContentEpic(
           )
         )
       );
+    })
+  );
+}
+
+export function closeNotebookEpic(
+  action$: ActionsObservable<actions.CloseNotebook>,
+  state$: StateObservable<AppState>
+): Observable<actions.DisposeContent | actions.KillKernelAction> {
+  return action$.pipe(
+    ofType(actions.CLOSE_NOTEBOOK),
+    mergeMap((action: actions.CloseNotebook):
+      Observable<actions.DisposeContent | actions.KillKernelAction> => {
+      const state = state$.value;
+      const contentRef = (action as actions.CloseNotebook).payload.contentRef;
+      const kernelRef = selectors.kernelRefByContentRef(state, { contentRef });
+      return of(actions.disposeContent({ contentRef }), actions.killKernel({ kernelRef, restarting: false, dispose: true }));
     })
   );
 }

@@ -30,7 +30,7 @@ binder({ repo: "nteract/vdom" }).subscribe(msg => console.log(msg));
 
 ## Documentation
 
-You can view the reference documentation for `rx-binder` in the [package docs](https://packages.nteract.io/modules/rx-binder).
+You can view the reference documentation for `rx-binder` in the [package docs](https://packages.nteract.io/modules/rx_binder).
 
 ## Support
 

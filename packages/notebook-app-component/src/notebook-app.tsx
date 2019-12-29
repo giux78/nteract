@@ -7,6 +7,7 @@ import {
   JSONObject
 } from "@nteract/commutable";
 import { actions, selectors } from "@nteract/core";
+import { MarkdownPreviewer } from "@nteract/markdown";
 import {
   KernelOutputError,
   Media,
@@ -34,17 +35,16 @@ import { connect } from "react-redux";
 import { Dispatch } from "redux";
 import { Subject } from "rxjs";
 
+import styled from "styled-components";
 import CellCreator from "./cell-creator";
+import UndoableCellDelete from "./decorators/undoable-cell-delete";
 import DraggableCell from "./draggable-cell";
 import Editor from "./editor";
 import { HijackScroll } from "./hijack-scroll";
-import MarkdownPreviewer from "./markdown-preview";
 import NotebookHelmet from "./notebook-helmet";
 import StatusBar from "./status-bar";
 import Toolbar, { CellToolbarMask } from "./toolbar";
 import TransformMedia from "./transform-media";
-
-import styled from "styled-components";
 
 function getTheme(theme: string) {
   switch (theme) {
@@ -84,7 +84,7 @@ interface AnyCellProps {
   executionCount: ExecutionCount;
   outputs: Immutable.List<any>;
   pager: Immutable.List<any>;
-  prompt?: InputRequestMessage;
+  prompts: Immutable.List<InputRequestMessage>;
   cellStatus: string;
   cellFocused: boolean; // not the ID of which is focused
   editorFocused: boolean;
@@ -133,17 +133,17 @@ const makeMapStateToCellProps = (
 
     const cellType = cell.cell_type;
     const outputs = cell.get("outputs", emptyList);
-    const prompt = selectors.notebook.cellPromptById(model, { id });
+    const prompts = selectors.notebook.cellPromptsById(model, { id });
 
     const sourceHidden =
       (cellType === "code" &&
-        (cell.getIn(["metadata", "inputHidden"]) ||
-          cell.getIn(["metadata", "hide_input"]))) ||
+        cell.getIn(["metadata", "jupyter", "source_hidden"])) ||
       false;
 
     const outputHidden =
       cellType === "code" &&
-      (outputs.size === 0 || cell.getIn(["metadata", "outputHidden"]));
+      (outputs.size === 0 ||
+        cell.getIn(["metadata", "jupyter", "outputs_hidden"]));
 
     const outputExpanded =
       cellType === "code" && cell.getIn(["metadata", "outputExpanded"]);
@@ -172,7 +172,7 @@ const makeMapStateToCellProps = (
       outputHidden,
       outputs,
       pager,
-      prompt,
+      prompts,
       source: cell.get("source", ""),
       sourceHidden,
       tags,
@@ -211,7 +211,7 @@ const makeMapDispatchToCellProps = (
         })
       ),
     clearOutputs: () => dispatch(actions.clearOutputs({ id, contentRef })),
-    deleteCell: () => dispatch(actions.deleteCell({ id, contentRef })),
+    deleteCell: () => dispatch(actions.markCellAsDeleting({ id, contentRef })),
     executeCell: () => dispatch(actions.executeCell({ id, contentRef })),
     toggleCellInputVisibility: () =>
       dispatch(actions.toggleCellInputVisibility({ id, contentRef })),
@@ -270,7 +270,6 @@ class AnyCell extends React.PureComponent<AnyCellProps> {
       toggleCellInputVisibility,
       toggleCellOutputVisibility,
       toggleOutputExpansion,
-      changeCellType,
       cellFocused,
       cellStatus,
       cellType,
@@ -279,9 +278,7 @@ class AnyCell extends React.PureComponent<AnyCellProps> {
       focusBelowCell,
       focusEditor,
       id,
-      prompt,
       tags,
-      theme,
       selectCell,
       unfocusEditor,
       contentRef,
@@ -348,9 +345,9 @@ class AnyCell extends React.PureComponent<AnyCellProps> {
                 </Output>
               ))}
             </Outputs>
-            {prompt && (
+            {this.props.prompts.map((prompt: InputRequestMessage) => (
               <PromptRequest {...prompt} submitPromptReply={sendInputReply} />
-            )}
+            ))}
           </React.Fragment>
         );
 
@@ -437,6 +434,7 @@ type NotebookProps = NotebookStateProps & NotebookDispatchProps;
 interface NotebookStateProps {
   cellOrder: Immutable.List<any>;
   theme: string;
+  deleteDelay: number;
   contentRef: ContentRef;
   focusedCell: CellId | null | undefined;
   cellMap: Immutable.Map<CellId, any>;
@@ -488,12 +486,14 @@ const makeMapStateToProps = (
       );
     }
     const theme = selectors.userTheme(state);
+    const deleteDelay = selectors.deleteDelay(state) / 1000;
 
     if (model.type !== "notebook") {
       return {
         cellOrder: Immutable.List(),
         contentRef,
         theme,
+        deleteDelay,
         focusedCell: null,
         cellMap: Immutable.Map()
       };
@@ -512,6 +512,7 @@ const makeMapStateToProps = (
       cellOrder: model.notebook.cellOrder,
       contentRef,
       theme,
+      deleteDelay,
       focusedCell,
       cellMap
     };
@@ -635,14 +636,23 @@ export class NotebookApp extends React.PureComponent<NotebookProps> {
           />
           {this.props.cellOrder.map(cellID => (
             <div className="cell-container" key={`cell-container-${cellID}`}>
-              <DraggableCell
-                moveCell={this.props.moveCell}
+              <UndoableCellDelete
                 id={cellID}
-                focusCell={this.props.focusCell}
                 contentRef={this.props.contentRef}
+                secondsDelay={this.props.deleteDelay}
               >
-                <ConnectedCell id={cellID} contentRef={this.props.contentRef} />
-              </DraggableCell>
+                <DraggableCell
+                  moveCell={this.props.moveCell}
+                  id={cellID}
+                  focusCell={this.props.focusCell}
+                  contentRef={this.props.contentRef}
+                >
+                  <ConnectedCell
+                    id={cellID}
+                    contentRef={this.props.contentRef}
+                  />
+                </DraggableCell>
+              </UndoableCellDelete>
               <CellCreator
                 key={`creator-${cellID}`}
                 id={cellID}

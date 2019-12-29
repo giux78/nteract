@@ -90,7 +90,9 @@ export function kernelRawStderr(payload: {
   };
 }
 
-export function killKernel(payload: actionTypes.KillKernelAction["payload"]): actionTypes.KillKernelAction {
+export function killKernel(
+  payload: actionTypes.KillKernelAction["payload"]
+): actionTypes.KillKernelAction {
   return {
     type: actionTypes.KILL_KERNEL,
     payload
@@ -290,6 +292,15 @@ export function setKernelInfo(payload: {
 }): actionTypes.SetKernelInfo {
   return {
     type: actionTypes.SET_KERNEL_INFO,
+    payload
+  };
+}
+
+export function disposeKernel(
+  payload: actionTypes.DisposeKernel["payload"]
+): actionTypes.DisposeKernel {
+  return {
+    type: actionTypes.DISPOSE_KERNEL,
     payload
   };
 }

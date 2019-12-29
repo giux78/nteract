@@ -1,5 +1,5 @@
 /* eslint class-methods-use-this: 0 */
-import { cloneDeep } from "lodash";
+import cloneDeep from "lodash.clonedeep";
 import React from "react";
 
 interface Props {

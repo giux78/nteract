@@ -11,6 +11,7 @@ import {
 } from "@nteract/types";
 import { RecordOf } from "immutable";
 import { connect } from "react-redux";
+import { Dispatch } from "redux";
 
 // Local modules
 import { MODAL_TYPES } from "../modal-controller";
@@ -65,10 +66,10 @@ function makeMapStateToProps(
 }
 
 function makeMapDispatchToProps(
-  initialState: AppState,
+  initialDispatch: Dispatch,
   initialProps: { contentRef: ContentRef }
 ) {
-  const mapDispatchToProps = (dispatch: any) => ({
+  const mapDispatchToProps = (dispatch: Dispatch) => ({
     onPublish: (payload: { contentRef: string }) =>
       dispatch(actions.publishToBookstore(payload)),
     toggleNotebookHeaderEditor: (payload: { contentRef: string }) =>

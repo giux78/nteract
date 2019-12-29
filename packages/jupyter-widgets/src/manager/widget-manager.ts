@@ -1,6 +1,7 @@
 import { KernelMessage } from "@jupyterlab/services";
 import * as base from "@jupyter-widgets/base";
 import * as controls from "@jupyter-widgets/controls";
+import * as pWidget from "@phosphor/widgets";
 import {
   DOMWidgetView,
   WidgetModel,
@@ -13,6 +14,8 @@ import {
   LocalKernelProps,
   RemoteKernelProps
 } from "@nteract/core";
+import { JupyterMessage } from "@nteract/messaging";
+import { ManagerActions } from "../manager/index";
 
 interface IDomWidgetModel extends DOMWidgetModel {
   _model_name: string;
@@ -36,16 +39,29 @@ export class WidgetManager extends base.ManagerBase<DOMWidgetView> {
     | RecordOf<LocalKernelProps>
     | RecordOf<RemoteKernelProps>
     | null;
+  actions: ManagerActions["actions"];
+  widgetsBeingCreated: { [model_id: string]: Promise<WidgetModel> };
 
-  constructor(kernel: any, stateModelById: (id: string) => any) {
+  constructor(
+    kernel: any,
+    stateModelById: (id: string) => any,
+    actions: ManagerActions["actions"]
+  ) {
     super();
     this.kernel = kernel;
     this.stateModelById = stateModelById;
+    this.actions = actions;
+    this.widgetsBeingCreated = {};
   }
 
-  update(kernel: any, stateModelById: (id: string) => any) {
+  update(
+    kernel: any,
+    stateModelById: (id: string) => any,
+    actions: ManagerActions["actions"]
+  ) {
     this.kernel = kernel;
     this.stateModelById = stateModelById;
+    this.actions = actions;
   }
 
   /**
@@ -83,12 +99,13 @@ export class WidgetManager extends base.ManagerBase<DOMWidgetView> {
   get_model(model_id: string): Promise<WidgetModel> | undefined {
     let model = super.get_model(model_id);
     if (model === undefined) {
-      let model_state = this.stateModelById(model_id)
-        .get("state")
-        .toJS();
-      model = this.new_widget_from_state_and_id(model_state, model_id);
+      return this.stateModelById(model_id).then((model: WidgetModel) => {
+        let model_state = model.get("state").toJS();
+        return this.new_widget_from_state_and_id(model_state, model_id);
+      });
+    } else {
+      return model;
     }
-    return model;
   }
 
   /**
@@ -116,33 +133,91 @@ export class WidgetManager extends base.ManagerBase<DOMWidgetView> {
    * @param  serialized_state - serialized model attributes.
    */
   new_widget(options: any, serialized_state: any = {}): Promise<WidgetModel> {
-    //first we check if the model was already created
-    let widget = super.get_model(options.model_id); //we need to use the super because we override get_model to create what it can't find
-    if (!widget) {
-      widget = super.new_widget(options, serialized_state);
+    const model_id = options.model_id;
+    //if this widget is already created
+    const existing_widget = super.get_model(model_id);
+    if (existing_widget) {
+      return existing_widget;
     }
-    return widget;
+    //if this widget is in the process of being created
+    else if (this.widgetsBeingCreated[model_id]) {
+      return this.widgetsBeingCreated[model_id];
+    }
+    //otherwise create a new widget
+    else {
+      let widget = super.new_widget(options, serialized_state);
+      this.widgetsBeingCreated[model_id] = widget;
+      return widget.then((new_widget: WidgetModel) => {
+        delete this.widgetsBeingCreated[new_widget.model_id];
+        return Promise.resolve(new_widget);
+      });
+    }
   }
 
+  /**
+   * Do not use this method. Use `render_view` instead for displaying the widget.
+   *
+   * This method is here because it is required to be implemented by the ManagerBase,
+   * so even though it is not used, do not delete it.
+   * @param msg
+   * @param view
+   * @param options
+   */
   display_view(
     msg: KernelMessage.IMessage,
     view: base.DOMWidgetView,
     options: any
   ): Promise<base.DOMWidgetView> {
-    return Promise.resolve(view);
+    throw Error("display_view not implemented. Use render_view instead.");
   }
 
-  _get_comm_info() {
-    return Promise.resolve({});
+  /**
+   * The ManagerBase type definition for the callbacks method expects
+   * the message types to be as defined by the IMessage interface from
+   * @jupyterlab/services. It is typed as any here so that we can use
+   * our JupyterMessage types that are emitted from our kernel.channels
+   * pipeline.
+   */
+  callbacks(): any {
+    return {
+      iopub: {
+        output: (reply: JupyterMessage) =>
+          this.actions.appendOutput({
+            ...reply.content,
+            output_type: reply.header.msg_type
+          }),
+        clear_output: (reply: JupyterMessage) => this.actions.clearOutput(),
+        status: (reply: JupyterMessage) =>
+          this.actions.updateCellStatus(reply.content.execution_state)
+      },
+      input: (reply: JupyterMessage) =>
+        this.actions.promptInputRequest(
+          reply.content.prompt,
+          reply.content.password
+        )
+    };
+  }
+
+  /**
+   * Render the given view to a target element
+   * @param view View to be rendered
+   * @param el Target element that the view will be rendered within
+   */
+  render_view(view: base.DOMWidgetView, el: HTMLElement): void {
+    pWidget.Widget.attach(view.pWidget, el);
+  }
+
+  /**
+   * This is not needed in our implementation. Instead, our stateModelById function
+   * sends an "update_state" message to the kernel if the model state cannot be found in
+   * the redux store
+   */
+  _get_comm_info(): Promise<{}> {
+    throw new Error("_get_comm_info is not implemented!");
   }
 
   /**
    * Create a comm which can be used for communication for a widget.
-   *
-   * If the data/metadata is passed in, open the comm before returning (i.e.,
-   * send the comm_open message). If the data and metadata is undefined, we
-   * want to reconstruct a comm that already exists in the kernel, so do not
-   * open the comm by sending the comm_open message.
    *
    * @param comm_target_name Comm target name
    * @param model_id The comm id
@@ -156,57 +231,24 @@ export class WidgetManager extends base.ManagerBase<DOMWidgetView> {
     metadata?: any,
     buffers?: ArrayBuffer[] | ArrayBufferView[]
   ) {
-    //TODO: Check if we need to open a comm
-    //TODO: Find a way to supply correct target module (only used in comm opens)
+    // Despite the doc string in iPyWidgets ManagerBase, we do not open a comm
+    // regardless of if data or metadata is passed in because a Manager is only
+    // instantiated once we already have recieved model information. This means that
+    // a comm is already open in the Kernel.
+    // If we ever find that we do need to open a comm, use the WidgetComm you create
+    // to send a comm_open message. To figure out the target module, you can call
+    // super.get_model(model_id) and read it from the state there.
     if (this.kernel) {
       return Promise.resolve(
         new WidgetComm(
           model_id,
           this.comm_target_name,
-          "<target module>",
+          "<target module>", // This is only used in comm opens, which is currently never used
           this.kernel
         )
       );
     } else {
       return Promise.reject("Kernel is null or undefined");
     }
-  }
-
-  /**
-   * This method creates a view for a given model. It starts off
-   * by registering a new model from the serialized model data. It
-   * then uses the loadClass method to resolve a reference to the
-   * WidgetView. Finally, it returns a reference to that Widget.
-   * Note that we don't display the view here. Instead, we invoke
-   * the `render` method on the WidgetView from within the
-   * `BackboneWrapper` component and pass a reference to a React
-   * element in this method.
-   *
-   * @param model   The Backbone-model associated with the widget
-   * @param options Configuration options for rendering the widget
-   */
-  async create_view(model: any, options: any): Promise<DOMWidgetView> {
-    const managerModel = await this.new_widget(
-      {
-        model_id: options.model_id,
-        model_name: (model as IDomWidgetModel)._model_name,
-        model_module: (model as IDomWidgetModel)._model_module,
-        model_module_version: (model as IDomWidgetModel)._module_version,
-        view_name: (model as IDomWidgetModel)._view_name,
-        view_module: (model as IDomWidgetModel)._view_module,
-        view_module_version: (model as IDomWidgetModel)._view_module_version
-      },
-      model
-    );
-    const WidgetView = await this.loadClass(
-      managerModel.get("_view_name"),
-      managerModel.get("_view_module"),
-      managerModel.get("_view_module_version")
-    );
-    const widget = new WidgetView({
-      model: managerModel,
-      el: options.el
-    });
-    return widget;
   }
 }

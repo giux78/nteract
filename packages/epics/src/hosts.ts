@@ -57,7 +57,7 @@ function convertNotebookToContent(
 export function publishToBookstore(
   action$: ActionsObservable<actions.PublishToBookstore>,
   state$: StateObservable<AppState>
-): Observable<{}> {
+): Observable<unknown> {
   return action$.pipe(
     ofType(actions.PUBLISH_TO_BOOKSTORE),
     switchMap(action => {

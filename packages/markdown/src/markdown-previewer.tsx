@@ -1,7 +1,7 @@
 /* eslint jsx-a11y/no-static-element-interactions: 0 */
 /* eslint jsx-a11y/no-noninteractive-tabindex: 0 */
 
-import Markdown from "@nteract/markdown";
+import Markdown from "./markdown-render";
 import {
   Input,
   Outputs,
@@ -35,7 +35,7 @@ const noop = () => {};
 //       only I (@rgbkrk) understand, I'll wait for others to reflect on this
 //       within the code base (or leave it alone, which is totally cool too). :)
 
-export default class MarkdownCell extends React.Component<Props, State> {
+export class MarkdownPreviewer extends React.Component<Props, State> {
   static defaultProps = {
     cellFocused: false,
     editorFocused: false,

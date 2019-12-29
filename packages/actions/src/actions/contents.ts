@@ -168,3 +168,25 @@ export function updateFileText(
     }
   };
 }
+
+export function closeNotebook(
+  payload: actionTypes.DisposeContent["payload"]
+): actionTypes.CloseNotebook {
+  return {
+    type: actionTypes.CLOSE_NOTEBOOK,
+    payload: {
+      contentRef: payload.contentRef
+    }
+  };
+}
+
+export function disposeContent(
+  payload: actionTypes.DisposeContent["payload"]
+): actionTypes.DisposeContent {
+  return {
+    type: actionTypes.DISPOSE_CONTENT,
+    payload: {
+      contentRef: payload.contentRef
+    }
+  };
+}

@@ -23,7 +23,7 @@ import GeoJSONTransform from "@nteract/transform-geojson";
 import ModelDebug from "@nteract/transform-model-debug";
 import PlotlyTransform from "@nteract/transform-plotly";
 import VDOMDisplay from "@nteract/transform-vdom";
-import { Vega2, Vega3, Vega4, Vega5, VegaLite1, VegaLite2, VegaLite3 } from "@nteract/transform-vega";
+import { Vega2, Vega3, Vega4, Vega5, VegaLite1, VegaLite2, VegaLite3, VegaLite4 } from "@nteract/transform-vega";
 
 import { ipcRenderer as ipc, remote } from "electron";
 import { mathJaxPath } from "mathjax-electron";
@@ -90,6 +90,7 @@ const store = configureStore({
           "application/vnd.vega.v4+json",
           "application/vnd.vega.v3+json",
           "application/vnd.vega.v2+json",
+          "application/vnd.vegalite.v4+json",
           "application/vnd.vegalite.v3+json",
           "application/vnd.vegalite.v2+json",
           "application/vnd.vegalite.v1+json",
@@ -120,6 +121,7 @@ const store = configureStore({
           "application/vnd.vegalite.v1+json": VegaLite1,
           "application/vnd.vegalite.v2+json": VegaLite2,
           "application/vnd.vegalite.v3+json": VegaLite3,
+          "application/vnd.vegalite.v4+json": VegaLite4,
           "application/vnd.vega.v2+json": Vega2,
           "application/vnd.vega.v3+json": Vega3,
           "application/vnd.vega.v4+json": Vega4,

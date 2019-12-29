@@ -94,7 +94,7 @@ export const codeCellIdsBelow = (
  */
 export const hiddenCellIds = (model: NotebookModel) =>
   model.notebook.cellOrder.filter(id =>
-    model.notebook.cellMap.getIn([id, "metadata", "inputHidden"])
+    model.notebook.cellMap.getIn([id, "metadata", "jupyter", "source_hidden"])
   );
 
 /**
@@ -103,7 +103,7 @@ export const hiddenCellIds = (model: NotebookModel) =>
  */
 export const idsOfHiddenOutputs = (model: NotebookModel) =>
   model.notebook.cellOrder.filter(id =>
-    model.notebook.cellMap.getIn([id, "metadata", "outputHidden"])
+    model.notebook.cellMap.getIn([id, "metadata", "jupyter", "outputs_hidden"])
   );
 
 /**
@@ -117,8 +117,8 @@ export const idsOfHiddenOutputs = (model: NotebookModel) =>
 export const transientCellMap = (model: NotebookModel) =>
   model.transient.get("cellMap", Immutable.Map());
 
-export const cellPromptById = (model: NotebookModel, { id }: { id: CellId }) =>
-  model.cellPrompts.get(id);
+export const cellPromptsById = (model: NotebookModel, { id }: { id: CellId }) =>
+  model.cellPrompts.get(id, Immutable.List());
 
 /**
  * Returns the CellIds of the code cells within a notebook.
@@ -142,18 +142,16 @@ export const metadata = (model: NotebookModel) =>
 /**
  * Returns the GitHub username the user has authenticated through.
  */
-export const githubUsername = createSelector(
-  metadata,
-  metadata => metadata.get("github_username", null)
+export const githubUsername = createSelector(metadata, metadata =>
+  metadata.get("github_username", null)
 );
 
 /**
  * Returns the ID of the GitHub Gist the notebook has been recently published
  * to.
  */
-export const gistId = createSelector(
-  metadata,
-  metadata => metadata.get("gist_id", null)
+export const gistId = createSelector(metadata, metadata =>
+  metadata.get("gist_id", null)
 );
 
 export const notebook = (model: NotebookModel) => model.notebook;
@@ -171,12 +169,9 @@ export const isDirty = createSelector(
 /**
  * Returns the JSON representation of the notebook.
  */
-export const asJSON = createSelector(
-  notebook,
-  notebook => {
-    return commutable.toJS(notebook);
-  }
-);
+export const asJSON = createSelector(notebook, notebook => {
+  return commutable.toJS(notebook);
+});
 
 /**
  * Returns the stringified version of a notebook. Returns an empty string
@@ -184,15 +179,12 @@ export const asJSON = createSelector(
  * toString so that REPLs don't think of this as the representation of this
  * module.
  */
-export const asString = createSelector(
-  asJSON,
-  notebookJS => {
-    if (notebookJS) {
-      return commutable.stringifyNotebook(notebookJS);
-    }
-    return "";
+export const asString = createSelector(asJSON, notebookJS => {
+  if (notebookJS) {
+    return commutable.stringifyNotebook(notebookJS);
   }
-);
+  return "";
+});
 
 const CODE_MIRROR_MODE_DEFAULT = "text";
 
@@ -214,7 +206,6 @@ export const codeMirrorMode = createSelector(
  * Returns the display name of the kernel the notebook is currently
  * running against.
  */
-export const displayName = createSelector(
-  metadata,
-  metadata => metadata.getIn(["kernelspec", "display_name"], "")
+export const displayName = createSelector(metadata, metadata =>
+  metadata.getIn(["kernelspec", "display_name"], "")
 );

@@ -37,8 +37,17 @@ interface DispatchProps {
   };
 }
 
-const PureTransformMedia = (props: MappedProps & DispatchProps) => {
-  const { Media, mediaActions, mediaType, data, metadata, theme } = props;
+const PureTransformMedia = (props: MappedProps & DispatchProps & OwnProps) => {
+  const {
+    Media,
+    mediaActions,
+    mediaType,
+    data,
+    metadata,
+    theme,
+    contentRef,
+    cellId
+  } = props;
 
   // If we had no valid result, return an empty output
   if (!mediaType || !data) {
@@ -46,7 +55,14 @@ const PureTransformMedia = (props: MappedProps & DispatchProps) => {
   }
 
   return (
-    <Media {...mediaActions} data={data} metadata={metadata} theme={theme} />
+    <Media
+      {...mediaActions}
+      data={data}
+      metadata={metadata}
+      theme={theme}
+      contentRef={contentRef}
+      id={cellId}
+    />
   );
 };
 

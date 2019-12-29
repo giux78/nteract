@@ -28,7 +28,7 @@ import {
   first,
   mergeMap,
   skipUntil,
-  takeUntil
+  takeUntil, tap
 } from "rxjs/operators";
 
 import {
@@ -56,7 +56,6 @@ const argv = yargs()
   .example("nteract notebook1.ipynb notebook2.ipynb", "Open notebooks")
   .example("nteract --kernel javascript", "Launch a kernel")
   .describe("kernel", "Launch a kernel")
-  .default("kernel", "python3")
   .alias("k", "kernel")
   .alias("v", "version")
   .alias("h", "help")
@@ -98,6 +97,10 @@ const fullAppReady$ = zip(electronReady$, prepareEnv).pipe(first());
 const jupyterConfigDir = join(app.getPath("home"), ".jupyter");
 const nteractConfigFilename = join(jupyterConfigDir, "nteract.json");
 
+const CONFIG = {
+  defaultKernel: "python3",
+};
+
 const prepJupyterObservable = prepareEnv.pipe(
   mergeMap(() =>
     // Create all the directories we need in parallel
@@ -123,7 +126,12 @@ const prepJupyterObservable = prepareEnv.pipe(
         throw err;
       })
     )
-  )
+  ),
+  tap(file => {
+    if(file) {
+      Object.assign(CONFIG, JSON.parse(file.toString("utf8")));
+    }
+  }),
 );
 
 const kernelSpecsPromise = prepJupyterObservable
@@ -274,16 +282,19 @@ openFile$
     const cliLaunchNewNotebook = (filepath: string | null) => {
       kernelSpecsPromise.then((specs: Kernelspecs) => {
         let kernel: string;
+        const passedKernel = argv.kernel as string;
+        const defaultKernel = CONFIG.defaultKernel;
 
-        if (argv.kernel in specs) {
-          kernel = argv.kernel;
-        } else if ("python2" in specs) {
-          kernel = "python2";
+        if (passedKernel && passedKernel in specs) {
+          kernel = passedKernel;
+        } else if (defaultKernel && defaultKernel in specs) {
+          kernel = defaultKernel;
         } else {
           const specList = Object.keys(specs);
           specList.sort();
           kernel = specList[0];
         }
+
         if (kernel && specs[kernel]) {
           launchNewNotebook(filepath, specs[kernel]);
         }

@@ -36,6 +36,10 @@ export interface PureToolbarProps {
   sourceHidden: boolean;
 }
 
+interface PureToolbarState {
+  moreActionsMenuExpanded: boolean;
+}
+
 export const CellToolbar = styled.div`
   background-color: var(--theme-cell-toolbar-bg);
   opacity: 0.4;
@@ -117,10 +121,18 @@ export const CellToolbarMask = styled.div.attrs<CellToolbarMaskProps>(
                           focus/hide the toolbar before they get there */
 ` as StyledComponent<"div", any, CellToolbarMaskProps, never>;
 
-export class PureToolbar extends React.PureComponent<PureToolbarProps> {
+export class PureToolbar extends React.PureComponent<
+  PureToolbarProps,
+  PureToolbarState
+> {
   static defaultProps: Partial<PureToolbarProps> = {
     type: "code"
   };
+
+  constructor(props: PureToolbarProps) {
+    super(props);
+    this.state = { moreActionsMenuExpanded: false };
+  }
 
   render(): JSX.Element {
     const { executeCell, deleteCell, sourceHidden } = this.props;
@@ -144,9 +156,16 @@ export class PureToolbar extends React.PureComponent<PureToolbarProps> {
           )}
           <SelectDataset />
           <SaveDataset />
-          <DropdownMenu>
+          <DropdownMenu
+            onDisplayChanged={(expanded: boolean) => {
+              this.setState({ moreActionsMenuExpanded: expanded });
+            }}
+          >
             <DropdownTrigger>
-              <button title="show additional actions">
+              <button
+                title="show additional actions"
+                aria-expanded={this.state.moreActionsMenuExpanded}
+              >
                 <span className="octicon toggle-menu">
                   <ChevronDownOcticon />
                 </span>

@@ -50,6 +50,7 @@ const epics = [
   coreEpics.executeAllCellsEpic,
   coreEpics.updateContentEpic,
   coreEpics.autoSaveCurrentContentEpic,
+  coreEpics.sendInputReplyEpic,
 
   launchKernelWhenNotebookSetEpic,
   watchSpawn,

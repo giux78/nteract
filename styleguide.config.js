@@ -113,7 +113,11 @@ module.exports = {
             projectReferences: true,
             transpileOnly: true
           }
-        }
+        },
+        {
+          test: /\.css$/,
+          use: ['style-loader', 'css-loader']
+        },
       ]
     }
   }

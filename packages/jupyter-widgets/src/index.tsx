@@ -1,9 +1,18 @@
 import * as React from "react";
 import { connect } from "react-redux";
-import { selectors, AppState } from "@nteract/core";
-
+import {
+  selectors,
+  AppState,
+  ContentRef,
+  KernelNotStartedProps,
+  LocalKernelProps,
+  RemoteKernelProps
+} from "@nteract/core";
+import { fromJS, RecordOf } from "immutable";
 import Manager from "./manager";
 import { WidgetModel } from "@jupyter-widgets/base";
+import { CellId } from "@nteract/commutable";
+import { request_state } from "./manager/widget-comms";
 
 interface JupyterWidgetData {
   model_id: string;
@@ -13,7 +22,18 @@ interface JupyterWidgetData {
 
 interface Props {
   data: JupyterWidgetData;
-  model: WidgetModel;
+  modelById: (model_id: string) => Promise<WidgetModel>;
+  kernel?:
+    | RecordOf<KernelNotStartedProps>
+    | RecordOf<LocalKernelProps>
+    | RecordOf<RemoteKernelProps>
+    | null;
+  id: CellId;
+  contentRef: ContentRef;
+}
+
+interface State {
+  model?: WidgetModel;
 }
 
 /**
@@ -23,26 +43,60 @@ interface Props {
  * the initial model for the widget from the comms state in the
  * core state model.
  */
-export class WidgetDisplay extends React.Component<Props> {
+export class WidgetDisplay extends React.Component<Props, State> {
   static MIMETYPE = "application/vnd.jupyter.widget-view+json";
 
+  constructor(props: Props) {
+    super(props);
+    this.state = { model: undefined };
+  }
+
+  async componentDidMount() {
+    const {
+      modelById,
+      data: { model_id }
+    } = this.props;
+
+    const model = await modelById(model_id);
+    this.setState({ model });
+  }
+
   render() {
-    return (
-      <Manager model={this.props.model} model_id={this.props.data.model_id} />
-    );
+    const { model } = this.state;
+    if (model) {
+      return (
+        <Manager
+          model={model}
+          model_id={this.props.data.model_id}
+          id={this.props.id}
+          contentRef={this.props.contentRef}
+          modelById={this.props.modelById}
+          kernel={this.props.kernel}
+        />
+      );
+    } else {
+      return null;
+    }
   }
 }
 
 const mapStateToProps = (state: AppState, props: Props) => {
-  const {
-    data: { model_id }
-  } = props;
+  let currentKernel = selectors.currentKernel(state);
   return {
-    model: selectors.modelById(state, { commId: model_id })
+    modelById: async (model_id: string) => {
+      let model = selectors.modelById(state, { commId: model_id });
+      //if we can't find the model, request the state from the kernel
+      if (!model && currentKernel) {
+        let request_state_response = await request_state(
+          currentKernel,
+          model_id
+        );
+        model = fromJS(request_state_response.content.data);
+      }
+      return model;
+    },
+    kernel: currentKernel
   };
 };
 
-export default connect(
-  mapStateToProps,
-  null
-)(WidgetDisplay);
+export default connect(mapStateToProps, null)(WidgetDisplay);

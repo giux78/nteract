@@ -28,3 +28,11 @@ export const autoSaveInterval = (state: AppState): number => {
   const DEFAULT_AUTOSAVE_INTERVAL_MS = 120000;
   return state.config.get("autoSaveInterval", DEFAULT_AUTOSAVE_INTERVAL_MS);
 };
+
+/**
+ * Returns the delete delay to be used in the notebook.
+ */
+export const deleteDelay = (state: AppState): number => {
+  const DEFAULT_DELETE_DELAY_MS = 10 * 1000;
+  return state.config.get("deleteDelay", DEFAULT_DELETE_DELAY_MS);
+};

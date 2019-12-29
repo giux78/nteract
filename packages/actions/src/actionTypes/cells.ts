@@ -44,6 +44,24 @@ export interface DeleteCell {
   };
 }
 
+export const MARK_CELL_AS_DELETING = "MARK_CELL_AS_DELETING";
+export interface MarkCellAsDeleting {
+  type: "MARK_CELL_AS_DELETING";
+  payload: {
+    id?: CellId;
+    contentRef: ContentRef;
+  };
+}
+
+export const UNMARK_CELL_AS_DELETING = "UNMARK_CELL_AS_DELETING";
+export interface UnmarkCellAsDeleting {
+  type: "UNMARK_CELL_AS_DELETING";
+  payload: {
+    id?: CellId;
+    contentRef: ContentRef;
+  };
+}
+
 export const CREATE_CELL_BELOW = "CREATE_CELL_BELOW";
 export interface CreateCellBelow {
   type: "CREATE_CELL_BELOW";

@@ -155,12 +155,12 @@ export function withCommId(
  *
  * @returns An Observable containing only messages of the specified types
  */
-export const ofMessageType = (
-  ...messageTypes: Array<string | [string]>
-): ((source: Observable<JupyterMessage>) => Observable<JupyterMessage>) => {
+export const ofMessageType = <T extends MessageType>(
+  ...messageTypes: Array<T | [T]>
+): ((source: Observable<JupyterMessage>) => Observable<JupyterMessage<T>>) => {
   // Switch to the splat mode
   if (messageTypes.length === 1 && Array.isArray(messageTypes[0])) {
-    return ofMessageType(...(messageTypes[0] as [string]));
+    return ofMessageType(...messageTypes[0]);
   }
 
   return (source: Observable<JupyterMessage>) =>
@@ -172,7 +172,7 @@ export const ofMessageType = (
             return;
           }
 
-          if (messageTypes.indexOf(msg.header.msg_type) !== -1) {
+          if (messageTypes.includes(msg.header.msg_type as any)) {
             subscriber.next(msg);
           }
         },
@@ -237,8 +237,8 @@ export const payloads = () => (
   source.pipe(
     ofMessageType("execute_reply"),
     map(entry => entry.content.payload),
-    filter(Boolean),
-    mergeMap(p => from(p))
+    filter(p => !!p),
+    mergeMap((p: Observable<PayloadMessage>) => from(p))
   );
 
 /**
@@ -266,3 +266,7 @@ export const inputRequests = () => (source: Observable<JupyterMessage>) =>
   );
 
 export * from "./messages";
+
+import { encode, decode } from "./wire-protocol";
+
+export const wireProtocol = { encode, decode };

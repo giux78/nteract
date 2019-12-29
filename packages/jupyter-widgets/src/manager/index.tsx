@@ -4,28 +4,42 @@ import { WidgetManager } from "./widget-manager";
 import BackboneWrapper from "../renderer/backbone-wrapper";
 import { connect } from "react-redux";
 import {
-  AppState,
-  selectors,
+  actions,
   KernelNotStartedProps,
   LocalKernelProps,
-  RemoteKernelProps
+  RemoteKernelProps,
+  ContentRef,
+  KernelStatus
 } from "@nteract/core";
+import { CellId } from "@nteract/commutable";
 import { WidgetModel } from "@jupyter-widgets/base";
 
 interface ConnectedProps {
-  modelById: (id: string) => any;
+  modelById: (id: string) => Promise<WidgetModel>;
   kernel?:
     | RecordOf<KernelNotStartedProps>
     | RecordOf<LocalKernelProps>
     | RecordOf<RemoteKernelProps>
     | null;
 }
+
+export interface ManagerActions {
+  actions: {
+    appendOutput: (output: any) => void;
+    clearOutput: () => void;
+    updateCellStatus: (status: KernelStatus) => void;
+    promptInputRequest: (prompt: string, password: boolean) => void;
+  };
+}
+
 interface OwnProps {
   model: WidgetModel;
   model_id: string;
+  id: CellId;
+  contentRef: ContentRef;
 }
 
-type Props = ConnectedProps & OwnProps;
+type Props = ConnectedProps & OwnProps & ManagerActions;
 
 /**
  * This component is is a wrapper component that initializes a
@@ -53,10 +67,15 @@ class Manager extends React.Component<Props> {
     if (Manager.manager === undefined) {
       Manager.manager = new WidgetManager(
         this.props.kernel,
-        this.props.modelById
+        this.props.modelById,
+        this.props.actions
       );
     } else {
-      Manager.manager.update(this.props.kernel, this.props.modelById);
+      Manager.manager.update(
+        this.props.kernel,
+        this.props.modelById,
+        this.props.actions
+      );
     }
     return Manager.manager;
   }
@@ -75,11 +94,43 @@ class Manager extends React.Component<Props> {
   }
 }
 
-const mapStateToProps = (state: AppState, props: OwnProps): ConnectedProps => {
+const mapDispatchToProps = (dispatch: any, props: OwnProps): ManagerActions => {
   return {
-    modelById: (model_id: string) =>
-      selectors.modelById(state, { commId: model_id }),
-    kernel: selectors.currentKernel(state)
+    actions: {
+      appendOutput: (output: any) =>
+        dispatch(
+          actions.appendOutput({
+            id: props.id,
+            contentRef: props.contentRef,
+            output
+          })
+        ),
+      clearOutput: () =>
+        dispatch(
+          actions.clearOutputs({
+            id: props.id,
+            contentRef: props.contentRef
+          })
+        ),
+      updateCellStatus: (status: KernelStatus) =>
+        dispatch(
+          actions.updateCellStatus({
+            id: props.id,
+            contentRef: props.contentRef,
+            status
+          })
+        ),
+      promptInputRequest: (prompt: string, password: boolean) =>
+        dispatch(
+          actions.promptInputRequest({
+            id: props.id,
+            contentRef: props.contentRef,
+            prompt,
+            password
+          })
+        )
+    }
   };
 };
-export default connect(mapStateToProps)(Manager);
+
+export default connect(null, mapDispatchToProps)(Manager);

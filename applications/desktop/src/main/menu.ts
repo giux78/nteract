@@ -6,11 +6,13 @@ import {
   BrowserWindow,
   dialog,
   FileFilter,
+  globalShortcut,
   Menu,
+  MenuItemConstructorOptions,
   shell,
   WebContents
 } from "electron";
-import { sortBy } from "lodash";
+import sortBy from "lodash.sortby";
 
 import { KernelspecInfo } from "@nteract/types";
 import { installShellCommand } from "./cli";
@@ -20,7 +22,7 @@ function send(
   focusedWindow: BrowserWindow,
   eventName: string,
   obj?: object | string | number
-) {
+): void {
   if (!focusedWindow) {
     console.error("renderer window not in focus (are your devtools open?)");
     return;
@@ -28,7 +30,12 @@ function send(
   focusedWindow.webContents.send(eventName, obj);
 }
 
-function createSender(eventName: string, obj?: object | string | number) {
+type Sender = (item: object, focusedWindow: BrowserWindow) => void;
+
+function createSender(
+  eventName: string,
+  obj?: object | string | number
+): Sender {
   return (item: object, focusedWindow: BrowserWindow) => {
     send(focusedWindow, eventName, obj);
   };
@@ -436,6 +443,25 @@ export function loadFullMenu(store = global.store) {
     ]
   };
 
+  // Pasting cells will also paste text, so we need to intercept the event with
+  // a global shortcut and then only trigger the IPC call.
+  function interceptAcceleratorAndForceOnlyMenuAction(
+    item: MenuItemConstructorOptions
+  ): void {
+    globalShortcut.register(item.accelerator!, () => {
+      const focusedWindow = BrowserWindow.getFocusedWindow();
+      if (focusedWindow) {
+        (item.click as Sender)({}, focusedWindow);
+      }
+    });
+  }
+
+  const pasteCell = edit.submenu.find(
+    each => each.label === "Paste Cell"
+  ) as MenuItemConstructorOptions;
+
+  interceptAcceleratorAndForceOnlyMenuAction(pasteCell);
+
   const cell = {
     label: "Cell",
     submenu: [
@@ -542,6 +568,13 @@ export function loadFullMenu(store = global.store) {
       {
         label: "Editor options",
         submenu: blink_menu
+      },
+      {
+        label: "Set default kernel",
+        submenu: sortBy(kernelSpecs, "spec.display_name").map(kernel => ({
+          label: kernel.spec.display_name,
+          click: createSender("menu:set-default-kernel", kernel.name)
+        }))
       }
     ]
   };

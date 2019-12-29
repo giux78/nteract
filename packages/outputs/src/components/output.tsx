@@ -100,6 +100,14 @@ export class Output extends React.PureComponent<Props, State> {
         // Already have a selection
         return;
       }
+
+      if (!childElement
+        || typeof childElement !== "object"
+        || !("props" in childElement)
+      ) {
+        return;
+      }
+
       if (childElement.props && childElement.props.output_type) {
         const child_output_type: string[] = Array.isArray(
           childElement.props.output_type

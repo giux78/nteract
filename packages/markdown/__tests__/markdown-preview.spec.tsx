@@ -2,11 +2,11 @@ import { emptyMarkdownCell } from "@nteract/commutable";
 import { mount, shallow } from "enzyme";
 import React from "react";
 
-import MarkdownPreview from "../src/markdown-preview";
+import { MarkdownPreviewer } from "../src/markdown-previewer";
 
-describe("MarkdownPreview ", () => {
+describe("MarkdownPreviewer ", () => {
   test("can be rendered", () => {
-    const cell = shallow(<MarkdownPreview cell={emptyMarkdownCell} />);
+    const cell = shallow(<MarkdownPreviewer cell={emptyMarkdownCell} />);
     expect(cell).not.toBeNull();
   });
 
@@ -14,7 +14,7 @@ describe("MarkdownPreview ", () => {
     const focusEditor = jest.fn();
 
     const cell = mount(
-      <MarkdownPreview
+      <MarkdownPreviewer
         id="1234"
         cell={emptyMarkdownCell}
         focusEditor={focusEditor}
@@ -41,7 +41,7 @@ describe("MarkdownPreview ", () => {
     const focusAbove = jest.fn();
 
     const cell = shallow(
-      <MarkdownPreview
+      <MarkdownPreviewer
         id="1234"
         cell={emptyMarkdownCell}
         focusAbove={focusAbove}
@@ -57,7 +57,7 @@ describe("MarkdownPreview ", () => {
     const focusBelow = jest.fn();
 
     const cell = shallow(
-      <MarkdownPreview
+      <MarkdownPreviewer
         id="1234"
         cell={emptyMarkdownCell}
         focusBelow={focusBelow}

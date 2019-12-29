@@ -1,10 +1,25 @@
 import { of, Subject } from "rxjs";
 import { toArray } from "rxjs/operators";
+import Immutable from "immutable";
 
 import * as actions from "@nteract/actions";
 import { COMM_MESSAGE, COMM_OPEN } from "@nteract/actions";
-import { ActionsObservable } from "redux-observable";
+import { ActionsObservable, StateObservable } from "redux-observable";
 import { commListenEpic } from "../src/comm";
+
+import {
+  makeAppRecord,
+  makeCommsRecord,
+  makeStateRecord,
+  makeEntitiesRecord,
+  makeHostsRecord,
+  makeContentsRecord,
+  makeDummyContentRecord,
+  ContentRecord,
+  createContentRef,
+  createKernelspecsRef,
+  makeTransformsRecord
+} from "@nteract/types";
 
 describe("commActionObservable", () => {
   test("emits COMM_OPEN and COMM_MESSAGE given the right messages", done => {
@@ -18,6 +33,37 @@ describe("commActionObservable", () => {
         target_module: "murdock"
       },
       buffers: new Uint8Array([])
+    };
+
+    const contentRef = createContentRef();
+    const kernelspecsRef = createKernelspecsRef();
+
+    const state = {
+      app: makeAppRecord({
+        version: "test"
+      }),
+      comms: makeCommsRecord(),
+      config: Immutable.Map({
+        theme: "light"
+      }),
+      core: makeStateRecord({
+        currentKernelspecsRef: kernelspecsRef,
+        entities: makeEntitiesRecord({
+          hosts: makeHostsRecord({}),
+          contents: makeContentsRecord({
+            byRef: Immutable.Map<string, ContentRecord>().set(
+              contentRef,
+              makeDummyContentRecord({
+                filepath: "test.ipynb"
+              })
+            )
+          }),
+          transforms: makeTransformsRecord({
+            displayOrder: Immutable.List([]),
+            byId: Immutable.Map({})
+          })
+        })
+      })
     };
 
     const commMessage = {
@@ -39,7 +85,7 @@ describe("commActionObservable", () => {
       })
     );
 
-    commListenEpic(action)
+    commListenEpic(action, new StateObservable(new Subject(), state))
       .pipe(toArray())
       .subscribe(
         actions => {

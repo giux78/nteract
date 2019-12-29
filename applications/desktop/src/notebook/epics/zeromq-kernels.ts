@@ -15,7 +15,7 @@ import {
   JupyterConnectionInfo
 } from "enchannel-zmq-backend";
 import * as jmp from "jmp";
-import { sample } from "lodash";
+import sample from "lodash.sample";
 import { ActionsObservable, ofType, StateObservable } from "redux-observable";
 import { empty, merge, Observable, of, Subscriber } from "rxjs";
 import {
@@ -93,12 +93,12 @@ export function launchKernelObservable(
             "color: black"
           );
 
-          spawn.stdout.on("data", data => {
+          spawn.stdout?.on("data", data => {
             const text = data.toString();
             logStd(text);
             observer.next(actions.kernelRawStdout({ text, kernelRef }));
           });
-          spawn.stderr.on("data", data => {
+          spawn.stderr?.on("data", data => {
             const text = data.toString();
             logStd(text);
             observer.next(actions.kernelRawStderr({ text, kernelRef }));
@@ -352,8 +352,8 @@ function killSpawn(spawn: ChildProcess): void {
   if (spawn.stdin && spawn.stdin.destroy) {
     spawn.stdin.destroy();
   }
-  spawn.stdout.destroy();
-  spawn.stderr.destroy();
+  spawn.stdout?.destroy();
+  spawn.stderr?.destroy();
 
   // Kill the process fully
   spawn.kill("SIGKILL");
@@ -445,7 +445,7 @@ export const killKernelEpic = (
         return subscription;
       });
     })
-  );
+  ) as Observable<Actions>;
 
 export function watchSpawn(
   action$: ActionsObservable<actions.NewKernelAction>

@@ -107,6 +107,14 @@ const byRef = (
           // TODO: we can set kernelRef when the content record uses it.
         })
       );
+    case actionTypes.FETCH_CONTENT_FAILED:
+      const fetchContentFailedAction = action as actionTypes.FetchContentFailed;
+      return state
+        .setIn([fetchContentFailedAction.payload.contentRef, "loading"], false)
+        .setIn(
+          [fetchContentFailedAction.payload.contentRef, "error"],
+          fetchContentFailedAction.payload.error
+        );
     case actionTypes.LAUNCH_KERNEL_SUCCESSFUL:
       // TODO: is this reasonable? We launched the kernel on behalf of this
       // content... so it makes sense to swap it, right?
@@ -273,6 +281,10 @@ const byRef = (
         .setIn([saveFulfilledAction.payload.contentRef, "saving"], false)
         .setIn([saveFulfilledAction.payload.contentRef, "error"], null);
     }
+    case actionTypes.DISPOSE_CONTENT: {
+      const typedAction = action as actionTypes.DisposeContent;
+      return state.delete(typedAction.payload.contentRef);
+    }
     // Defer all notebook actions to the notebook reducer
     case actionTypes.SEND_EXECUTE_REQUEST:
     case actionTypes.FOCUS_CELL:
@@ -288,6 +300,8 @@ const byRef = (
     case actionTypes.FOCUS_PREVIOUS_CELL_EDITOR:
     case actionTypes.SET_IN_CELL:
     case actionTypes.MOVE_CELL:
+    case actionTypes.MARK_CELL_AS_DELETING:
+    case actionTypes.UNMARK_CELL_AS_DELETING:
     case actionTypes.DELETE_CELL:
     case actionTypes.REMOVE_CELL: // DEPRECATION WARNING: This action type is being deprecated. Please use DELETE_CELL instead
     case actionTypes.CREATE_CELL_BELOW:

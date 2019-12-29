@@ -55,6 +55,26 @@ export function deleteCell(payload: {
   };
 }
 
+export function markCellAsDeleting(payload: {
+  id?: string;
+  contentRef: ContentRef;
+}): actionTypes.MarkCellAsDeleting {
+  return {
+    type: actionTypes.MARK_CELL_AS_DELETING,
+    payload
+  };
+}
+
+export function unmarkCellAsDeleting(payload: {
+  id?: string;
+  contentRef: ContentRef;
+}): actionTypes.UnmarkCellAsDeleting {
+  return {
+    type: actionTypes.UNMARK_CELL_AS_DELETING,
+    payload
+  };
+}
+
 export function createCellBelow(payload: {
   id?: CellId;
   cellType: CellType;

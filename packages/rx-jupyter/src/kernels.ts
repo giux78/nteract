@@ -2,7 +2,7 @@ import { Subject, Subscriber } from "rxjs";
 import { ajax } from "rxjs/ajax";
 import { webSocket } from "rxjs/webSocket";
 import urljoin from "url-join";
-import URLSearchParams from "url-search-params";
+import URLSearchParams from "@ungap/url-search-params";
 import { createAJAXSettings } from "./base";
 
 import { ServerConfig } from "@nteract/types";

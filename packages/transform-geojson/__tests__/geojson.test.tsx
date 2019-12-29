@@ -1,5 +1,6 @@
 import { mount } from "enzyme";
-import _ from "lodash";
+import set from "lodash.set";
+import cloneDeep from "lodash.clonedeep";
 import React from "react";
 
 import GeoJSONTransform, { getTheme } from "../src";
@@ -79,8 +80,8 @@ describe("GeoJSONTransform", () => {
     ).toBeFalsy();
 
     geoComponent.setProps({
-      data: _.set(
-        _.cloneDeep(geojson),
+      data: set(
+        cloneDeep(geojson),
         ["features", 0, "properties", "popupContent"],
         "somewhere"
       ),

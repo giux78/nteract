@@ -5,28 +5,15 @@ import CodeMirror, {
   Editor,
   EditorChangeLinkedList,
   EditorFromTextArea,
-  Position,
-  Token
+  Position
 } from "codemirror";
 
-import {
-  configurableCodeMirrorOptions,
-  FullEditorConfiguration,
-  isConfigurable
-} from "./configurable";
+import { FullEditorConfiguration, isConfigurable } from "./configurable";
 
-import { debounce } from "lodash";
+import debounce from "lodash.debounce";
 import * as React from "react";
 import ReactDOM from "react-dom";
-import {
-  empty,
-  fromEvent,
-  merge,
-  Observable,
-  of,
-  Subject,
-  Subscription
-} from "rxjs";
+import { empty, merge, Observable, Subject, Subscription } from "rxjs";
 import {
   catchError,
   debounceTime,
@@ -37,7 +24,6 @@ import {
   takeUntil
 } from "rxjs/operators";
 
-import { excludedIntelliSenseTriggerKeys } from "./excludedIntelliSenseKeys";
 import { codeComplete, pick } from "./jupyter/complete";
 import { tool } from "./jupyter/tooltip";
 
@@ -77,6 +63,7 @@ export type CodeMirrorEditorProps = {
   onChange?: (value: string, change: EditorChangeLinkedList) => void;
   onFocusChange?: (focused: boolean) => void;
   value: string;
+  editorType: "codemirror";
 } & Partial<FullEditorConfiguration>;
 
 interface CodeMirrorEditorState {
@@ -108,13 +95,13 @@ export default class CodeMirrorEditor extends React.PureComponent<
     matchBrackets: true,
     indentUnit: 4,
     lineNumbers: false,
-    cursorBlinkRate: 530
+    cursorBlinkRate: 530,
+    editorType: "codemirror"
   };
 
   textarea?: HTMLTextAreaElement | null;
   cm!: EditorFromTextArea;
   defaultOptions: FullEditorConfiguration;
-  keyupEventsSubscriber!: Subscription;
   completionSubject!: Subject<CodeCompletionEvent>;
   completionEventsSubscriber!: Subscription;
   debounceNextCompletionRequest: boolean;
@@ -229,7 +216,7 @@ export default class CodeMirrorEditor extends React.PureComponent<
 
     require("./mode/ipython");
 
-    const { completion, editorFocused, focusAbove, focusBelow } = this.props;
+    const { editorFocused, focusAbove, focusBelow } = this.props;
 
     // ensure a single tooltip holder exists on document.body
     const tipHolder = document.getElementsByClassName(
@@ -275,37 +262,6 @@ export default class CodeMirrorEditor extends React.PureComponent<
     this.cm.on("blur", this.focusChanged.bind(this, false));
     this.cm.on("change", this.codemirrorValueChanged.bind(this));
 
-    const keyupEvents: Observable<EditorKeyEvent> = fromEvent<EditorKeyEvent>(
-      this.cm as any,
-      "keyup",
-      (editor, ev) => ({ editor, ev })
-    );
-
-    // Initiate code completion in response to some keystrokes *other than*
-    //  "Ctrl-Space" (which is bound in extraKeys, above)
-    this.keyupEventsSubscriber = keyupEvents
-      .pipe(switchMap<EditorKeyEvent, EditorKeyEvent>(i => of(i)))
-      .subscribe(({ editor, ev }) => {
-        if (
-          completion &&
-          !editor.state.completionActive &&
-          !excludedIntelliSenseTriggerKeys[(ev.keyCode || ev.which).toString()]
-        ) {
-          const cursor: Position = editor.getDoc().getCursor();
-          const token: Token = editor.getTokenAt(cursor);
-          if (
-            token.type === "tag" ||
-            token.type === "variable" ||
-            token.string === " " ||
-            token.string === "<" ||
-            token.string === "/" ||
-            token.string === "."
-          ) {
-            editor.execCommand("autocomplete");
-          }
-        }
-      });
-
     this.completionSubject = new Subject<CodeCompletionEvent>();
 
     // tslint:disable no-shadowed-variable
@@ -326,9 +282,7 @@ export default class CodeMirrorEditor extends React.PureComponent<
       )
     );
 
-    const completionResults: Observable<
-      () => void
-    > = mergedCompletionEvents.pipe(
+    const completionResults: Observable<() => void> = mergedCompletionEvents.pipe(
       switchMap(ev => {
         const { channels } = this.props;
         if (!channels) {
@@ -347,7 +301,7 @@ export default class CodeMirrorEditor extends React.PureComponent<
           })
         );
       })
-    );
+    ) as Observable<() => void>;
 
     this.completionEventsSubscriber = completionResults.subscribe(callback =>
       callback()
@@ -415,7 +369,6 @@ export default class CodeMirrorEditor extends React.PureComponent<
     if (this.cm) {
       this.cm.toTextArea();
     }
-    this.keyupEventsSubscriber.unsubscribe();
     this.completionEventsSubscriber.unsubscribe();
   }
 

@@ -194,6 +194,6 @@ describe("Output with an array of output_types", () => {
 
     expect(wrapperDisplay.find(Media.HTML).exists()).toEqual(true);
     expect(wrapperExecuteResult.find(Media.HTML).exists()).toEqual(true);
-    expect(wrapperOtherOutput.html()).toEqual(null);
+    expect(wrapperOtherOutput.html()).toEqual("");
   });
 });

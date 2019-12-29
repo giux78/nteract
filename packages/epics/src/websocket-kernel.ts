@@ -318,7 +318,7 @@ export const killKernelEpic = (
         return of(
           actions.killKernelFailed({
             error: new Error("kernel not available for killing"),
-            kernelRef: action.payload.kernelRef
+            kernelRef
           })
         );
       }
@@ -349,10 +349,19 @@ export const killKernelEpic = (
       //       kill kernel epic because we need to make sure that creation happens
       //       after deletion
       return sessions.destroy(serverConfig, kernel.sessionId).pipe(
-        map(() =>
-          actions.killKernelSuccessful({
-            kernelRef: action.payload.kernelRef
-          })
+        mergeMap(() =>
+          action.payload.dispose && action.payload.kernelRef
+            ? of(
+                actions.killKernelSuccessful({
+                  kernelRef: action.payload.kernelRef
+                }),
+                actions.disposeKernel({ kernelRef: action.payload.kernelRef })
+              )
+            : of(
+                actions.killKernelSuccessful({
+                  kernelRef: action.payload.kernelRef
+                })
+              )
         ),
         catchError(err =>
           of(
@@ -430,13 +439,7 @@ export const restartWebSocketKernelEpic = (
       const id = kernel.id;
 
       return kernels.restart(serverConfig, id).pipe(
-        mergeMap<
-          AjaxResponse,
-          | actions.RestartKernelFailed
-          | actions.RestartKernelSuccessful
-          | actions.ExecuteAllCells
-          | actions.ClearAllOutputs
-        >((response: AjaxResponse) => {
+        mergeMap((response: AjaxResponse) => {
           if (response.status !== 200) {
             return of(
               actions.restartKernelFailed({

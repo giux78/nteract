@@ -1,9 +1,10 @@
 import { AppState } from "@nteract/types";
 
+import * as cell from "./core/contents/cell";
 import * as notebook from "./core/contents/notebook";
 
 // Export sub-selectors (those that operate on contents models for instance)
-export { notebook };
+export { cell, notebook };
 
 // Export all selectors from files for backwards-compatibility with older imports
 export * from "./core/contents";

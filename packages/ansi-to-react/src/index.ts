@@ -1,4 +1,4 @@
-import { AnserJsonEntry, ansiToJson } from "anser";
+import Anser, { AnserJsonEntry } from "anser";
 import { escapeCarriageReturn } from "escape-carriage";
 import * as React from "react";
 
@@ -13,7 +13,7 @@ const LINK_REGEX = /(https?:\/\/(?:www\.|(?!www))[^\s\.]+\.[^\s]{2,}|www\.[^\s]+
  */
 function ansiToJSON(input: string, use_classes = false) {
   input = escapeCarriageReturn(input);
-  return ansiToJson(input, {
+  return Anser.ansiToJson(input, {
     json: true,
     remove_empty: true,
     use_classes

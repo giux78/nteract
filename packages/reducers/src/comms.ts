@@ -49,10 +49,19 @@ function processCommMessage(
     return state.updateIn(["models", comm_id], model =>
       model.setIn(path, value)
     );
+  } else if (data.method === "update") {
+    /**
+     * ipywidgets uses the update method to notify the
+     * client that state for a particular comm model needs
+     * to be updated instead of replaced. We check for this
+     * update method and modify the comm state accordingly
+     * when this is the case.
+     */
+    return state.mergeIn(["models", comm_id, "state"], fromJS(data.state));
+  } else {
+    // Default to overwrite / replace for now
+    return state.setIn(["models", comm_id], fromJS(data));
   }
-
-  // Default to overwrite / replace for now
-  return state.setIn(["models", comm_id], fromJS(data));
 }
 
 type CommAction = RegisterCommTargetAction | CommMessageAction | CommOpenAction;

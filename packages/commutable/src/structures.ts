@@ -156,6 +156,50 @@ export function deleteCell(
 }
 
 /**
+ * Mark a cell as deleting; can be undone.
+ *
+ * @param notebook The notebook containing the cell.
+ * @param cellID The ID of the cell that will be deleted.
+ *
+ * @returns The modified notebook
+ */
+export function markCellDeleting(
+  notebook: ImmutableNotebook,
+  cellId: string
+): ImmutableNotebook {
+  return notebook.withMutations(nb =>
+    nb.setIn(
+      ["cellMap", cellId],
+      nb
+        .getIn(["cellMap", cellId])
+        .setIn(["metadata", "nteract", "transient", "deleting"], true)
+    )
+  );
+}
+
+/**
+ * Undo marking a cell as deleting.
+ *
+ * @param notebook The notebook containing the cell.
+ * @param cellID The ID of the cell that will not be deleted.
+ *
+ * @returns The modified notebook
+ */
+export function markCellNotDeleting(
+  notebook: ImmutableNotebook,
+  cellId: string
+): ImmutableNotebook {
+  return notebook.withMutations(nb =>
+    nb.setIn(
+      ["cellMap", cellId],
+      nb
+        .getIn(["cellMap", cellId])
+        .setIn(["metadata", "nteract", "transient", "deleting"], false)
+    )
+  );
+}
+
+/**
  * A new 'monocell' notebook with a single empty code cell. This function is useful
  * if you are looking to initialize a fresh, new notebook.
  */

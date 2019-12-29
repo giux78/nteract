@@ -45,7 +45,7 @@ class NAppHandler(IPythonHandler):
 
         asset_url = config.asset_url
 
-        if asset_url is "":
+        if asset_url == "":
             asset_url = base_url
 
         # Ensure there's a trailing slash
