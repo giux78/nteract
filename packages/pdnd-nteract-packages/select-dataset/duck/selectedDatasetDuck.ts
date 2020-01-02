@@ -96,9 +96,7 @@ const selectedDatasetSelectors = { datasetSelector, datasetMetaSelector };
 
 // operations (TODO: needs refactor)
 const makeDatasetSnippet = ({ datasetURI, bearerToken }): string =>
-  `url = "${encodeURIComponent(
-    datasetURI
-  )}?format=csv"
+  `url = "${encodeURIComponent(datasetURI)}?format=csv"
 payload = ""
 
 headers = {'authorization': 'Bearer ${bearerToken}'}
@@ -114,13 +112,11 @@ const makeDatasetSnippetByKernel = ({
 }): string => {
   if (kernelName == "python3") {
     const dataVar = metacatalog.dcatapit.name; // .substring(0, 20);
-    return `url = "${
-      datasetURI
-    }?format=csv" 
+    return `url = "${datasetURI}?format=csv" 
 payload = ""
 headers = {'authorization': 'Bearer YOU_MUST_BE_LOGGEDIN'}
 response = requests.request("GET", url, data=payload, headers=headers)
-${dataVar} = pd.read_csv(StringIO(response.text))
+${dataVar} = pd.read_csv(StringIO(response.text), sep=None, engine="python")
 ${dataVar}`;
   } else if (kernelName == "scala") {
     return `import ammonite.ops._, scalaj.http._
@@ -132,7 +128,7 @@ val resp = Http("${BASE_API_URI}dataset-manager/v1/dataset/${encodeURIComponent(
 .asString
 val ${
       metacatalog.dcatapit.name
-      }  = ujson.read(resp.body).asInstanceOf[ujson.Js.Arr]
+    }  = ujson.read(resp.body).asInstanceOf[ujson.Js.Arr]
       `;
   } else if (kernelName == "ir") {
     return `options(repr.matrix.max.rows = 10)
@@ -196,11 +192,7 @@ const datasetEpic = (action$, state$) =>
   action$.pipe(
     ofType(FOCUS_CELL),
     switchMap(
-      action =>
-        action$.pipe(
-          ofType(DATASET_FULFILL),
-          take(1)
-        ),
+      action => action$.pipe(ofType(DATASET_FULFILL), take(1)),
       (focusedCell, selectedDataset) => {
         const state = state$.value;
         const { contentRef, id } = focusedCell.payload;
@@ -234,7 +226,6 @@ const requestDatasetEpic = action$ =>
   action$.pipe(
     ofType(DATASET_REQUEST),
     switchMap(({ payload }) =>
-
       /*  ajax
           .get(
             BASE_API_URI +
@@ -247,18 +238,19 @@ const requestDatasetEpic = action$ =>
             }
           ) */
 
-      of({})
-        .pipe(
-          map(() => fulfillDataset({
+      of({}).pipe(
+        map(() =>
+          fulfillDataset({
             operational: {
               logical_uri: payload.url
             },
             dcatapit: {
               name: payload.name
             }
-          })),
-          catchError(error => of(rejectDataset(error)))
-        )
+          })
+        ),
+        catchError(error => of(rejectDataset(error)))
+      )
     )
   );
 
