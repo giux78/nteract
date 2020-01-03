@@ -25,7 +25,7 @@ RUN npm install --global lerna
 
 #COPY . /nteract
 
-RUN git clone https://github.com/teamdigitale/nteract.git
+RUN git clone -b dev  https://github.com/teamdigitale/nteract.git
 
 WORKDIR /nteract
 
