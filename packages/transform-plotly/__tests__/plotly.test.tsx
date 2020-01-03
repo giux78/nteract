@@ -1,10 +1,12 @@
 import { mount } from "enzyme";
-import _ from "lodash";
+import set from "lodash.set";
+import cloneDeep from "lodash.clonedeep";
 import React from "react";
 
 import PlotlyTransform from "../src";
 
-const plotly = require("@nteract/plotly");
+jest.mock("plotly.js-dist");
+const plotly = require("plotly.js-dist");
 
 function deepFreeze(obj) {
   // Retrieve the property names defined on obj
@@ -88,7 +90,7 @@ describe("PlotlyTransform", () => {
     const instance = wrapper.instance();
 
     wrapper.setProps({
-      data: _.set(_.cloneDeep(figure), ["data", 0, "type"], "bar")
+      data: set(cloneDeep(figure), ["data", 0, "type"], "bar")
     });
 
     expect(instance.plotDiv.data[0].type).toEqual("bar");

@@ -1,4 +1,4 @@
-import { debounce } from "lodash";
+import debounce from "lodash.debounce";
 import { editor } from "monaco-editor";
 import * as React from "react";
 

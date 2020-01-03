@@ -18,11 +18,14 @@ import {
   makeCodeCell,
   makeMarkdownCell,
   makeRawCell,
+  markCellDeleting,
+  markCellNotDeleting,
   OnDiskDisplayData,
   OnDiskExecuteResult,
   OnDiskOutput,
   OnDiskStreamOutput
 } from "@nteract/commutable";
+import { UpdateDisplayDataContent } from "@nteract/messaging";
 import {
   DocumentRecordProps,
   makeDocumentRecord,
@@ -31,7 +34,7 @@ import {
 } from "@nteract/types";
 import { escapeCarriageReturnSafe } from "escape-carriage";
 import { fromJS, List, Map, RecordOf, Set } from "immutable";
-import { has } from "lodash";
+import has from "lodash.has";
 import uuid from "uuid/v4";
 
 type KeyPath = List<string | number>;
@@ -145,7 +148,8 @@ function clearOutputs(
   if (type === "code") {
     return cleanedState
       .setIn(["notebook", "cellMap", id, "outputs"], List())
-      .setIn(["notebook", "cellMap", id, "execution_count"], null);
+      .setIn(["notebook", "cellMap", id, "execution_count"], null)
+      .setIn(["cellPrompts", id], List());
   }
   return cleanedState;
 }
@@ -203,7 +207,55 @@ function clearAllOutputs(
 
   return state
     .setIn(["notebook", "cellMap"], cellMap)
-    .set("transient", transient);
+    .set("transient", transient)
+    .set("cellPrompts", Map());
+}
+
+type UpdatableOutputContent =
+  | OnDiskExecuteResult
+  | OnDiskDisplayData
+  | UpdateDisplayDataContent;
+
+// Utility function used in two reducers below
+function updateAllDisplaysWithID(
+  state: NotebookModel,
+  content: UpdatableOutputContent
+): NotebookModel {
+  if (!content || !content.transient || !content.transient.display_id) {
+    return state;
+  }
+
+  const keyPaths: KeyPaths =
+    state.getIn([
+      "transient",
+      "keyPathsForDisplays",
+      content.transient.display_id
+    ]) || List();
+
+  const updateOutput = (output: any) => {
+    if (output) {
+      // We already have something here, don't change the other fields
+      return output.merge({
+        data: createFrozenMediaBundle(content.data),
+        metadata: fromJS(content.metadata || {})
+      });
+    } else if (content.output_type === "update_display_data") {
+      // Nothing here and we have no valid output, just create a basic output
+      return {
+        data: createFrozenMediaBundle(content.data),
+        metadata: fromJS(content.metadata || {}),
+        output_type: "display_data"
+      };
+    } else {
+      // Nothing here, but we have a valid output
+      return createImmutableOutput(content);
+    }
+  };
+
+  const updateOneDisplay = (currState: NotebookModel, keyPath: KeyPath) =>
+    currState.updateIn(keyPath, updateOutput);
+
+  return keyPaths.reduce(updateOneDisplay, state);
 }
 
 function appendOutput(
@@ -238,14 +290,11 @@ function appendOutput(
   // }
 
   // We now have a display to track
-  let displayID;
-  let typedOutput;
-  if (output.output_type === "execute_result") {
-    typedOutput = output as OnDiskExecuteResult;
-  } else {
-    typedOutput = output as OnDiskDisplayData;
+  const displayID = output.transient!.display_id;
+
+  if (!displayID || typeof displayID !== "string") {
+    return state;
   }
-  displayID = typedOutput.transient!.display_id;
 
   // Every time we see a display id we're going to capture the keypath
   // to the output
@@ -272,42 +321,17 @@ function appendOutput(
     // Append our current output's keyPath
     .push(keyPath);
 
-  const immutableOutput = createImmutableOutput(output);
-
-  // We'll reduce the overall state based on each keypath, updating output
-  return state
-    .updateIn(keyPath, () => immutableOutput)
-    .setIn(["transient", "keyPathsForDisplays", displayID], keyPaths);
+  return updateAllDisplaysWithID(
+    state.setIn(["transient", "keyPathsForDisplays", displayID], keyPaths),
+    output
+  );
 }
 
 function updateDisplay(
   state: NotebookModel,
   action: actionTypes.UpdateDisplay
 ): RecordOf<DocumentRecordProps> {
-  const { content } = action.payload;
-  if (!(content && content.transient && content.transient.display_id)) {
-    return state;
-  }
-  const displayID = content.transient.display_id;
-
-  const keyPaths: KeyPaths = state.getIn([
-    "transient",
-    "keyPathsForDisplays",
-    displayID
-  ]);
-
-  const updatedContent = {
-    data: createFrozenMediaBundle(content.data),
-    metadata: fromJS(content.metadata || {})
-  };
-
-  return keyPaths.reduce(
-    (currState: NotebookModel, kp: KeyPath) =>
-      currState.updateIn(kp, output => {
-        return output.merge(updatedContent);
-      }),
-    state
-  );
+  return updateAllDisplaysWithID(state, action.payload.content);
 }
 
 function focusNextCell(
@@ -422,6 +446,32 @@ function moveCell(
         .splice(oldIndex, 1)
         .splice(newIndex - (oldIndex < newIndex ? 1 : 0), 0, action.payload.id);
     }
+  );
+}
+
+function markCellAsDeleting(
+  state: NotebookModel,
+  action: actionTypes.MarkCellAsDeleting
+): RecordOf<DocumentRecordProps> {
+  const id = action.payload.id ? action.payload.id : state.cellFocused;
+  if (!id) {
+    return state;
+  }
+  return state.update("notebook", (notebook: ImmutableNotebook) =>
+    markCellDeleting(notebook, id)
+  );
+}
+
+function unmarkCellAsDeleting(
+  state: NotebookModel,
+  action: actionTypes.UnmarkCellAsDeleting
+): RecordOf<DocumentRecordProps> {
+  const id = action.payload.id ? action.payload.id : state.cellFocused;
+  if (!id) {
+    return state;
+  }
+  return state.update("notebook", (notebook: ImmutableNotebook) =>
+    markCellNotDeleting(notebook, id)
   );
 }
 
@@ -630,8 +680,15 @@ function toggleCellOutputVisibility(
   }
 
   return state.setIn(
-    ["notebook", "cellMap", id, "metadata", "outputHidden"],
-    !state.getIn(["notebook", "cellMap", id, "metadata", "outputHidden"])
+    ["notebook", "cellMap", id, "metadata", "jupyter", "outputs_hidden"],
+    !state.getIn([
+      "notebook",
+      "cellMap",
+      id,
+      "metadata",
+      "jupyter",
+      "outputs_hidden"
+    ])
   );
 }
 
@@ -639,15 +696,20 @@ function unhideAll(
   state: NotebookModel,
   action: actionTypes.UnhideAll
 ): RecordOf<DocumentRecordProps> {
+  const { outputHidden, inputHidden } = action.payload;
+  let metadataMixin = Map<string, boolean>();
+
+  if (outputHidden !== undefined) {
+    metadataMixin = metadataMixin.set("outputs_hidden", outputHidden);
+  }
+  if (inputHidden !== undefined) {
+    metadataMixin = metadataMixin.set("source_hidden", inputHidden);
+  }
+
   return state.updateIn(["notebook", "cellMap"], cellMap =>
     cellMap.map((cell: ImmutableCell) => {
       if ((cell as any).get("cell_type") === "code") {
-        return cell.mergeIn(["metadata"], {
-          // TODO: Verify that we convert to one namespace
-          // for hidden input/output
-          outputHidden: action.payload.outputHidden,
-          inputHidden: action.payload.inputHidden
-        });
+        return cell.mergeIn(["metadata", "jupyter"], metadataMixin);
       }
       return cell;
     })
@@ -664,8 +726,15 @@ function toggleCellInputVisibility(
   }
 
   return state.setIn(
-    ["notebook", "cellMap", id, "metadata", "inputHidden"],
-    !state.getIn(["notebook", "cellMap", id, "metadata", "inputHidden"])
+    ["notebook", "cellMap", id, "metadata", "jupyter", "source_hidden"],
+    !state.getIn([
+      "notebook",
+      "cellMap",
+      id,
+      "metadata",
+      "jupyter",
+      "source_hidden"
+    ])
   );
 }
 
@@ -709,16 +778,19 @@ function setKernelspecInfo(
   action: actionTypes.SetKernelspecInfo
 ): RecordOf<DocumentRecordProps> {
   const { kernelInfo } = action.payload;
-  return state
-    .setIn(
-      ["notebook", "metadata", "kernelspec"],
-      fromJS({
-        name: kernelInfo.name,
-        language: kernelInfo.spec.language,
-        display_name: kernelInfo.spec.display_name
-      })
-    )
-    .setIn(["notebook", "metadata", "kernel_info", "name"], kernelInfo.name);
+  if (kernelInfo.spec) {
+    return state
+      .setIn(
+        ["notebook", "metadata", "kernelspec"],
+        fromJS({
+          name: kernelInfo.name,
+          language: kernelInfo.spec.language,
+          display_name: kernelInfo.spec.display_name
+        })
+      )
+      .setIn(["notebook", "metadata", "kernel_info", "name"], kernelInfo.name);
+  }
+  return state;
 }
 
 function overwriteMetadataField(
@@ -875,10 +947,12 @@ function promptInputRequest(
   action: actionTypes.PromptInputRequest
 ): RecordOf<DocumentRecordProps> {
   const { id, password, prompt } = action.payload;
-  return state.setIn(["cellPrompts", id], {
-    prompt,
-    password
-  });
+  return state.updateIn(["cellPrompts", id], prompts =>
+    prompts.push({
+      prompt,
+      password
+    })
+  );
 }
 
 // DEPRECATION WARNING: Below, the following action types are being deprecated: RemoveCell, CreateCellAfter and CreateCellBefore
@@ -894,6 +968,8 @@ type DocumentAction =
   | actionTypes.AppendOutput
   | actionTypes.UpdateDisplay
   | actionTypes.MoveCell
+  | actionTypes.MarkCellAsDeleting
+  | actionTypes.UnmarkCellAsDeleting
   | actionTypes.DeleteCell
   | actionTypes.RemoveCell
   | actionTypes.CreateCellBelow
@@ -963,6 +1039,10 @@ export function notebook(
       return setInCell(state, action);
     case actionTypes.MOVE_CELL:
       return moveCell(state, action);
+    case actionTypes.MARK_CELL_AS_DELETING:
+      return markCellAsDeleting(state, action);
+    case actionTypes.UNMARK_CELL_AS_DELETING:
+      return unmarkCellAsDeleting(state, action);
     case actionTypes.DELETE_CELL:
       return deleteCellFromState(state, action);
     case actionTypes.CREATE_CELL_BELOW:

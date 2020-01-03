@@ -1,0 +1,14 @@
+site_name: nteract
+repo_url: https://github.com/nteract/nteract
+repo_name: "GitHub"
+
+nav:
+  - Home: "index.md"
+  - Packages:
+      - "@nteract/stateful-components": "!include ./packages/stateful-components/mkdocs.yml"
+
+plugins:
+  - monorepo
+
+theme:
+  name: gitbook

@@ -1,12 +1,10 @@
-/**
- * @module epics
- */
 import { commListenEpic } from "./comm";
 import {
   autoSaveCurrentContentEpic,
   fetchContentEpic,
   saveContentEpic,
-  updateContentEpic
+  updateContentEpic,
+  closeNotebookEpic
 } from "./contents";
 import {
   executeAllCellsEpic,
@@ -54,7 +52,8 @@ const allEpics = [
   publishToBookstore,
   publishToBookstoreAfterSave,
   restartWebSocketKernelEpic,
-  sendInputReplyEpic
+  sendInputReplyEpic,
+  closeNotebookEpic
 ];
 
 export {
@@ -79,5 +78,6 @@ export {
   publishToBookstore,
   publishToBookstoreAfterSave,
   restartWebSocketKernelEpic,
-  sendInputReplyEpic
+  sendInputReplyEpic,
+  closeNotebookEpic
 };

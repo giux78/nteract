@@ -23,13 +23,37 @@ import {
 } from "@nteract/core";
 
 import { fixtureJSON } from "@nteract/fixtures";
-import { downloadString, saveAsContentEpic } from "../src/contents";
+import {
+  downloadString,
+  saveAsContentEpic,
+  saveContentEpic
+} from "../src/contents";
 
 jest.mock("rx-jupyter", () => ({
   contents: {
     save: (severConfig, filepath, model) => {
       return of({ response: {} });
-    }
+    },
+    get: jest
+      .fn()
+      .mockReturnValue(
+        of({
+          status: 200,
+          response: { last_modified: "some_stable_value" }
+        })
+      )
+      .mockReturnValueOnce(
+        of({
+          status: 200,
+          response: { last_modified: "one_value" }
+        })
+      )
+      .mockReturnValueOnce(
+        of({
+          status: 200,
+          response: { last_modified: "one_value" }
+        })
+      )
   }
 }));
 
@@ -160,7 +184,9 @@ describe("saveAs", () => {
           contents: makeContentsRecord({
             byRef: Immutable.Map<string, ContentRecord>().set(
               contentRef,
-              makeNotebookContentRecord({ filepath: "test.ipynb" })
+              makeNotebookContentRecord({
+                filepath: "a-different-filename.ipynb"
+              })
             )
           }),
           transforms: makeTransformsRecord({
@@ -184,6 +210,61 @@ describe("saveAs", () => {
       actions.saveAsFulfilled({
         contentRef,
         model: {}
+      })
+    ]);
+  });
+});
+
+describe("save", () => {
+  const contentRef = createContentRef();
+  const kernelspecsRef = createKernelspecsRef();
+  it("updates last_modified date from server-side model on save", async () => {
+    const state = {
+      app: makeAppRecord({
+        version: "test",
+        host: makeJupyterHostRecord({})
+      }),
+      comms: makeCommsRecord(),
+      config: Immutable.Map({
+        theme: "light"
+      }),
+      core: makeStateRecord({
+        currentKernelspecsRef: kernelspecsRef,
+        entities: makeEntitiesRecord({
+          hosts: makeHostsRecord({}),
+          contents: makeContentsRecord({
+            byRef: Immutable.Map<string, ContentRecord>().set(
+              contentRef,
+              makeNotebookContentRecord({
+                filepath: "a-different-filename.ipynb"
+              })
+            )
+          }),
+          transforms: makeTransformsRecord({
+            displayOrder: Immutable.List([]),
+            byId: Immutable.Map({})
+          })
+        })
+      })
+    };
+
+    const responses = await saveContentEpic(
+      ActionsObservable.of(
+        actions.save({ filepath: "test.ipynb", contentRef })
+      ),
+      new StateObservable(new Subject(), state)
+    )
+      .pipe(toArray())
+      .toPromise();
+
+    expect(responses).toEqual([
+      actions.saveFulfilled({
+        contentRef,
+        model: { last_modified: "one_value" }
+      }),
+      actions.saveFulfilled({
+        contentRef,
+        model: { last_modified: "some_stable_value" }
       })
     ]);
   });

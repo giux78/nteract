@@ -1,6 +1,3 @@
-/**
- * @module actions
- */
 import { CellId } from "@nteract/commutable";
 import { ExecuteRequest } from "@nteract/messaging";
 import {
@@ -88,6 +85,7 @@ export interface InterruptKernel {
   type: "INTERRUPT_KERNEL";
   payload: {
     kernelRef?: KernelRef | null;
+    contentRef?: ContentRef | null;
   };
 }
 
@@ -115,6 +113,8 @@ export interface KillKernelAction {
   payload: {
     restarting: boolean;
     kernelRef?: KernelRef | null;
+    dispose?: boolean;
+    contentRef?: ContentRef | null;
   };
 }
 
@@ -277,4 +277,12 @@ export interface ShutdownReplyTimedOut {
     kernelRef: KernelRef;
   };
   error: true;
+}
+
+export const DISPOSE_KERNEL = "DISPOSE_KERNEL";
+export interface DisposeKernel {
+  type: "DISPOSE_KERNEL";
+  payload: {
+    kernelRef: KernelRef;
+  };
 }

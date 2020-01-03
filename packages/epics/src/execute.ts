@@ -1,6 +1,3 @@
-/**
- * @module epics
- */
 import {
   Channels,
   childOf,
@@ -30,7 +27,6 @@ import {
   mergeMap,
   share,
   switchMap,
-  take,
   takeUntil,
   tap
 } from "rxjs/operators";
@@ -73,12 +69,10 @@ export function executeCellStream(
   const executeRequest = message;
 
   // All the streams intended for all frontends
-  const cellMessages: Observable<
-    JupyterMessage<MessageType, any>
-  > = channels.pipe(
-    childOf(executeRequest),
-    share()
-  );
+  const cellMessages: Observable<JupyterMessage<
+    MessageType,
+    any
+  >> = channels.pipe(childOf(executeRequest), share());
 
   // All the payload streams, intended for one user
   const payloadStream = cellMessages.pipe(payloads());
@@ -157,7 +151,9 @@ export function createExecuteCellStream(
   id: string,
   contentRef: ContentRef
 ): Observable<any> {
-  const kernel = selectors.currentKernel(state);
+  const kernel = selectors.kernelByContentRef(state, {
+    contentRef: contentRef
+  });
 
   const { bearerToken } = { ...tokensSelector(state) };
 
@@ -205,6 +201,18 @@ export function createExecuteCellStream(
             actions.LAUNCH_KERNEL,
             actions.LAUNCH_KERNEL_BY_NAME,
             actions.KILL_KERNEL
+          ),
+          filter(
+            (
+              action:
+                | actions.ExecuteCanceled
+                | actions.DeleteCell
+                | actions.LaunchKernelAction
+                | actions.LaunchKernelByNameAction
+                | actions.KillKernelAction
+                | actions.ExecuteCell
+                | actions.ExecuteFocusedCell
+            ) => action.payload.contentRef === contentRef
           )
         )
       )
@@ -367,30 +375,45 @@ export function executeCellEpic(
 }
 
 export const updateDisplayEpic = (
-  action$: ActionsObservable<actions.NewKernelAction>
+  action$: ActionsObservable<
+    actions.NewKernelAction | actions.KillKernelSuccessful
+  >
 ) =>
   // Global message watcher so we need to set up a feed for each new kernel
   action$.pipe(
     ofType(actions.LAUNCH_KERNEL_SUCCESSFUL),
-    switchMap((action: actions.NewKernelAction) =>
-      action.payload.kernel.channels.pipe(
-        ofMessageType("update_display_data"),
-        map((msg: JupyterMessage) =>
-          actions.updateDisplay({
-            content: msg.content,
-            contentRef: action.payload.contentRef
-          })
-        ),
-        takeUntil(action$.pipe(ofType(actions.KILL_KERNEL_SUCCESSFUL))),
-        catchError(error =>
-          of(
-            actions.updateDisplayFailed({
-              error,
-              contentRef: action.payload.contentRef
+    switchMap(
+      (action: actions.NewKernelAction | actions.KillKernelSuccessful) =>
+        (action as actions.NewKernelAction).payload.kernel.channels.pipe(
+          ofMessageType("update_display_data"),
+          map((msg: JupyterMessage) =>
+            actions.updateDisplay({
+              content: msg.content,
+              contentRef: (action as actions.NewKernelAction).payload.contentRef
             })
+          ),
+          takeUntil(
+            action$.pipe(
+              ofType(actions.KILL_KERNEL_SUCCESSFUL),
+              filter(
+                (
+                  killAction:
+                    | actions.KillKernelSuccessful
+                    | actions.NewKernelAction
+                ) => killAction.payload.kernelRef === action.payload.kernelRef
+              )
+            )
+          ),
+          catchError(error =>
+            of(
+              actions.updateDisplayFailed({
+                error,
+                contentRef: (action as actions.NewKernelAction).payload
+                  .contentRef
+              })
+            )
           )
         )
-      )
     )
   );
 
@@ -402,9 +425,11 @@ export const sendInputReplyEpic = (
     ofType(actions.SEND_INPUT_REPLY),
     switchMap((action: actions.SendInputReply) => {
       const state = state$.value;
-      const kernel = selectors.currentKernel(state);
+      const kernel = selectors.kernelByContentRef(state, {
+        contentRef: action.payload.contentRef
+      });
 
-      if (kernel && kernel.type === "websocket") {
+      if (kernel) {
         const reply = inputReply({ value: action.payload.value });
         kernel.channels.next(reply);
       }

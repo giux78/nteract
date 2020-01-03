@@ -2,9 +2,6 @@
 /* eslint jsx-a11y/click-events-have-key-events: 0 */
 /* eslint jsx-a11y/anchor-is-valid: 0 */
 
-// TODO: Fix up a11y eslint here
-// TODO: All the `<li>` below that have role button should just be `<button>` with proper styling
-
 import {
   DropdownContent,
   DropdownMenu,
@@ -39,6 +36,10 @@ export interface PureToolbarProps {
   sourceHidden: boolean;
 }
 
+interface PureToolbarState {
+  moreActionsMenuExpanded: boolean;
+}
+
 export const CellToolbar = styled.div`
   background-color: var(--theme-cell-toolbar-bg);
   opacity: 0.4;
@@ -53,7 +54,7 @@ export const CellToolbar = styled.div`
   }
 
   @media print {
-    display: none ;
+    display: none;
   }
 
   button {
@@ -109,23 +110,31 @@ export const CellToolbarMask = styled.div.attrs<CellToolbarMaskProps>(
   })
 )`
   z-index: 9;
-  position: absolute;
-  top: 0px;
-  right: 0px;
+  position: sticky; /* keep visible with large code cells that need scrolling */
+  float: right;
+  top: 0;
+  right: 0;
   height: 34px;
-
-  /* Set the left padding to 50px to give users extra room to move their
-              mouse to the toolbar without causing the cell to go out of focus and thus
-              hide the toolbar before they get there. */
-  padding: 0px 0px 0px 50px;
+  margin: 0 0 0 -100%; /* allow code cell to completely overlap (underlap?) */
+  padding: 0 0 0 50px; /* give users extra room to move their mouse to the
+                          toolbar without causing the cell to go out of
+                          focus/hide the toolbar before they get there */
 ` as StyledComponent<"div", any, CellToolbarMaskProps, never>;
 
-export class PureToolbar extends React.PureComponent<PureToolbarProps> {
+export class PureToolbar extends React.PureComponent<
+  PureToolbarProps,
+  PureToolbarState
+> {
   static defaultProps: Partial<PureToolbarProps> = {
     type: "code"
   };
 
-  render() {
+  constructor(props: PureToolbarProps) {
+    super(props);
+    this.state = { moreActionsMenuExpanded: false };
+  }
+
+  render(): JSX.Element {
     const { executeCell, deleteCell, sourceHidden } = this.props;
 
     return (
@@ -147,9 +156,16 @@ export class PureToolbar extends React.PureComponent<PureToolbarProps> {
           )}
           <SelectDataset />
           <SaveDataset />
-          <DropdownMenu>
+          <DropdownMenu
+            onDisplayChanged={(expanded: boolean) => {
+              this.setState({ moreActionsMenuExpanded: expanded });
+            }}
+          >
             <DropdownTrigger>
-              <button title="show additional actions">
+              <button
+                title="show additional actions"
+                aria-expanded={this.state.moreActionsMenuExpanded}
+              >
                 <span className="octicon toggle-menu">
                   <ChevronDownOcticon />
                 </span>

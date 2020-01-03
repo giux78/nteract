@@ -1,6 +1,3 @@
-/**
- * @module actions
- */
 import { CellId, CellType } from "@nteract/commutable";
 import { ContentRef, KernelRef } from "@nteract/types";
 
@@ -54,6 +51,26 @@ export function deleteCell(payload: {
 }): actionTypes.DeleteCell {
   return {
     type: actionTypes.DELETE_CELL,
+    payload
+  };
+}
+
+export function markCellAsDeleting(payload: {
+  id?: string;
+  contentRef: ContentRef;
+}): actionTypes.MarkCellAsDeleting {
+  return {
+    type: actionTypes.MARK_CELL_AS_DELETING,
+    payload
+  };
+}
+
+export function unmarkCellAsDeleting(payload: {
+  id?: string;
+  contentRef: ContentRef;
+}): actionTypes.UnmarkCellAsDeleting {
+  return {
+    type: actionTypes.UNMARK_CELL_AS_DELETING,
     payload
   };
 }
@@ -199,11 +216,9 @@ export function updateCellExecutionCount(payload: {
   return setInCell({ ...payload, path: ["execution_count"] });
 }
 
-export function unhideAll(payload: {
-  outputHidden: boolean;
-  inputHidden: boolean;
-  contentRef: ContentRef;
-}): actionTypes.UnhideAll {
+export function unhideAll(
+  payload: actionTypes.UnhideAll["payload"]
+): actionTypes.UnhideAll {
   return {
     type: "UNHIDE_ALL",
     payload

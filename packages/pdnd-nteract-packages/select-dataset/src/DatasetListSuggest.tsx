@@ -13,7 +13,12 @@ import {
   Position,
   Classes
 } from "@blueprintjs/core";
-import { Suggest, ItemRenderer, ItemPredicate, renderFilteredItems } from "@blueprintjs/select";
+import {
+  Suggest,
+  ItemRenderer,
+  ItemPredicate,
+  renderFilteredItems
+} from "@blueprintjs/select";
 import { IconNames } from "@blueprintjs/icons";
 
 import { highlightText } from "./highlightUtil";
@@ -62,7 +67,7 @@ const DatasetListSuggest = ({
   error
 }): JSX.Element => (
   <Fragment>
-    <H3 style={{ color: "hsl(210, 100%, 40%)" }}>PDND Load Dataset</H3>
+    <H3 style={{ color: "hsl(210, 100%, 40%)" }}>CKAN Load Dataset</H3>
     <FormGroup
       // helperText="Please enter a value"
       label="Search Dataset"
@@ -125,7 +130,9 @@ const DatasetListSuggest = ({
         // itemListRenderer={itemListProps => <Menu>{renderFilteredItems(itemListProps)}</Menu>}
         itemPredicate={filterDatasetItem}
         inputValueRenderer={datasetInputRender}
-        onItemSelect={({ name , physicalUrl }: IDatasetItem) => requestDataset({ name , physicalUrl})}
+        onItemSelect={({ name, physicalUrl }: IDatasetItem) =>
+          requestDataset({ name, physicalUrl })
+        }
       />
     </FormGroup>
   </Fragment>

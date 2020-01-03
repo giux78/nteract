@@ -89,7 +89,7 @@ function buildFixtureNotebook(config: JSONObject) {
   return notebook;
 }
 
-export function fixtureStore(config: JSONObject) {
+export const mockAppState = (config: JSONObject): AppState => {
   const dummyNotebook = buildFixtureNotebook(config);
 
   const frontendToShell = new Subject();
@@ -100,7 +100,7 @@ export function fixtureStore(config: JSONObject) {
   const kernelRef = createKernelRef();
   const contentRef = createContentRef();
 
-  const initialAppState: AppState = {
+  return {
     core: makeStateRecord({
       kernelRef,
       entities: makeEntitiesRecord({
@@ -117,7 +117,8 @@ export function fixtureStore(config: JSONObject) {
                 cellFocused:
                   config && config.codeCellCount && config.codeCellCount > 1
                     ? dummyNotebook.get("cellOrder", Immutable.List()).get(1)
-                    : null
+                    : null,
+                kernelRef
               }),
               filepath:
                 config && config.noFilename ? "" : "dummy-store-nb.ipynb"
@@ -145,6 +146,10 @@ export function fixtureStore(config: JSONObject) {
     }),
     comms: makeCommsRecord()
   };
+};
+
+export function fixtureStore(config: JSONObject) {
+  const initialAppState = mockAppState(config);
 
   return createStore(rootReducer, initialAppState as any);
 }

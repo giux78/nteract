@@ -4,6 +4,7 @@ import {
   actions,
   AppState,
   ContentRef,
+  KernelRecord,
   KernelRef,
   LocalKernelProps,
   selectors
@@ -14,7 +15,7 @@ import {
   JupyterConnectionInfo
 } from "enchannel-zmq-backend";
 import * as jmp from "jmp";
-import { sample } from "lodash";
+import sample from "lodash.sample";
 import { ActionsObservable, ofType, StateObservable } from "redux-observable";
 import { empty, merge, Observable, of, Subscriber } from "rxjs";
 import {
@@ -85,21 +86,19 @@ export function launchKernelObservable(
           };
 
           console.log(
-            `\n>>>> %cLogging kernel ${
-              kernelSpec.name
-            } (ref ${kernelRef}) stdout and stderr to javascript console in %cthis color %c  %c <<<<\n`,
+            `\n>>>> %cLogging kernel ${kernelSpec.name} (ref ${kernelRef}) stdout and stderr to javascript console in %cthis color %c  %c <<<<\n`,
             "font-weight: bold;",
             `color: ${logColor}; font-weight: bold;`,
             `background-color: ${logColor}; padding: 2px;`,
             "color: black"
           );
 
-          spawn.stdout.on("data", data => {
+          spawn.stdout?.on("data", data => {
             const text = data.toString();
             logStd(text);
             observer.next(actions.kernelRawStdout({ text, kernelRef }));
           });
-          spawn.stderr.on("data", data => {
+          spawn.stderr?.on("data", data => {
             const text = data.toString();
             logStd(text);
             observer.next(actions.kernelRawStderr({ text, kernelRef }));
@@ -195,11 +194,7 @@ export const launchKernelByNameEpic = (
             return actions.launchKernelFailed({
               contentRef: action.payload.contentRef,
               error: new Error(
-                `A kernel named ${
-                  action.payload.kernelSpecName
-                } does not appear to be available. Try installing the ${
-                  action.payload.kernelSpecName
-                } kernelspec or selecting a kernel from the runtime menu.`
+                `A kernel named ${action.payload.kernelSpecName} does not appear to be available. Try installing the ${action.payload.kernelSpecName} kernelspec or selecting a different kernel.`
               ),
               kernelRef: action.payload.kernelRef
             });
@@ -243,7 +238,9 @@ export const launchKernelEpic = (
 
       ipc.send("nteract:ping:kernel", action.payload.kernelSpec);
 
-      const oldKernelRef = selectors.currentKernelRef(state$.value);
+      const oldKernelRef = selectors.kernelRefByContentRef(state$.value, {
+        contentRef: action.payload.contentRef
+      });
 
       // Kill the old kernel by emitting the action to kill it if it exists
       let cleanupOldKernel$:
@@ -301,7 +298,17 @@ export const interruptKernelEpic = (
     // interrupt, instead doing it after the last one happens
     concatMap(
       (action: actions.InterruptKernel): Observable<InterruptActions> => {
-        const kernel = selectors.currentKernel(state$.value);
+        const { contentRef } = action.payload;
+        let kernel: KernelRecord | null | undefined;
+
+        if (contentRef) {
+          kernel = selectors.kernelByContentRef(state$.value, {
+            contentRef
+          });
+        } else {
+          kernel = selectors.currentKernel(state$.value);
+        }
+
         if (!kernel) {
           return of(
             actions.interruptKernelFailed({
@@ -345,8 +352,8 @@ function killSpawn(spawn: ChildProcess): void {
   if (spawn.stdin && spawn.stdin.destroy) {
     spawn.stdin.destroy();
   }
-  spawn.stdout.destroy();
-  spawn.stderr.destroy();
+  spawn.stdout?.destroy();
+  spawn.stderr?.destroy();
 
   // Kill the process fully
   spawn.kill("SIGKILL");
@@ -438,7 +445,7 @@ export const killKernelEpic = (
         return subscription;
       });
     })
-  );
+  ) as Observable<Actions>;
 
 export function watchSpawn(
   action$: ActionsObservable<actions.NewKernelAction>

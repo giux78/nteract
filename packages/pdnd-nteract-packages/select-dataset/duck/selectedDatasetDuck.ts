@@ -6,7 +6,7 @@ import { createSelector } from "reselect";
 import { Map as ImmutableMap, List as ImmutableList, fromJS } from "immutable";
 
 import { FOCUS_CELL, updateCellSource } from "@nteract/actions/src";
-import { cellById as cellByIdSelector } from "@nteract/selectors/src/notebook";
+import { cellById as cellByIdSelector } from "@nteract/selectors/src/core/contents/notebook";
 import { model as modelSelector } from "@nteract/selectors/src";
 import { tokensSelector } from "../../login/duck/loginDuck";
 
@@ -96,9 +96,7 @@ const selectedDatasetSelectors = { datasetSelector, datasetMetaSelector };
 
 // operations (TODO: needs refactor)
 const makeDatasetSnippet = ({ datasetURI, bearerToken }): string =>
-  `url = "${BASE_API_URI}dataset-manager/v1/dataset/${encodeURIComponent(
-    datasetURI
-  )}?format=json"
+  `url = "${encodeURIComponent(datasetURI)}?format=csv"
 payload = ""
 
 headers = {'authorization': 'Bearer ${bearerToken}'}
@@ -114,25 +112,21 @@ const makeDatasetSnippetByKernel = ({
 }): string => {
   if (kernelName === "python3") {
     const dataVar = metacatalog.dcatapit.name; // .substring(0, 20);
-    return `url = "${BASE_API_URI}${encodeURIComponent(
-      datasetURI
-    )}" 
+    return `url = "${datasetURI}?format=csv" 
 payload = ""
 headers = {'authorization': 'Bearer YOU_MUST_BE_LOGGEDIN'}
 response = requests.request("GET", url, data=payload, headers=headers)
-${dataVar} = pd.read_csv(StringIO(response.text))
+${dataVar} = pd.read_csv(StringIO(response.text), sep=None, engine="python")
 ${dataVar}`;
   } else if (kernelName == "scala") {
     return `import ammonite.ops._, scalaj.http._
-val resp = Http("${BASE_API_URI}${encodeURIComponent(
-      datasetURI
-    )})
+val resp = Http("${BASE_API_URI}${encodeURIComponent(datasetURI)})
 .headers(Seq("Authorization" -> ("Bearer YOU_MUST_BE_LOGGEDIN"),
 "content-Type" -> "application/json"))
 .asString
 val ${
       metacatalog.dcatapit.name
-      }  = ujson.read(resp.body).asInstanceOf[ujson.Js.Arr]
+    }  = ujson.read(resp.body).asInstanceOf[ujson.Js.Arr]
       `;
   } else if (kernelName == "ir") {
     return `options(repr.matrix.max.rows = 10)
@@ -140,9 +134,7 @@ library(httr)
 #install.packages("ggplot2")
 library(ggplot2)
 library(IRdisplay)
-data <- GET("${BASE_API_URI}${encodeURIComponent(
-      datasetURI
-    )}", 
+data <- GET("${BASE_API_URI}${encodeURIComponent(datasetURI)}", 
   add_headers(Authorization = "Bearer YOU_MUST_BE_LOGGEDIN"))
 content <- content(data)
 ${metacatalog.dcatapit.name} <- read.csv(text=content, header=TRUE, sep=",")
@@ -157,9 +149,7 @@ using Plots;
 using HTTP;
 using CSV;
 res = HTTP.request("GET",
-  "${BASE_API_URI}${encodeURIComponent(
-      datasetURI
-    )}",
+  "${BASE_API_URI}${encodeURIComponent(datasetURI)}",
   [("Authorization", "Bearer YOU_MUST_BE_LOGGEDIN")]);
 ${metacatalog.dcatapit.name} = CSV.read(IOBuffer(res.body));
 ${metacatalog.dcatapit.name}
@@ -196,11 +186,7 @@ const datasetEpic = (action$, state$) =>
   action$.pipe(
     ofType(FOCUS_CELL),
     switchMap(
-      action =>
-        action$.pipe(
-          ofType(DATASET_FULFILL),
-          take(1)
-        ),
+      action => action$.pipe(ofType(DATASET_FULFILL), take(1)),
       (focusedCell, selectedDataset) => {
         const state = state$.value;
         const { contentRef, id } = focusedCell.payload;
@@ -234,7 +220,6 @@ const requestDatasetEpic = action$ =>
   action$.pipe(
     ofType(DATASET_REQUEST),
     switchMap(({ payload }) =>
-
       /*  ajax
           .get(
             BASE_API_URI +
@@ -247,19 +232,19 @@ const requestDatasetEpic = action$ =>
             }
           ) */
 
-      of({})
-        .pipe(
-          map(() => fulfillDataset({
+      of({}).pipe(
+        map(() =>
+          fulfillDataset({
+            operational: {
+              logical_uri: payload.url
+            },
             dcatapit: {
               name: payload.name
-            },
-            operational: {
-              logical_uri: payload.physicalUrl
-                  .substring(payload.physicalUrl.lastIndexOf("/") + 1)
             }
-          })),
-          catchError(error => of(rejectDataset(error)))
-        )
+          })
+        ),
+        catchError(error => of(rejectDataset(error)))
+      )
     )
   );
 

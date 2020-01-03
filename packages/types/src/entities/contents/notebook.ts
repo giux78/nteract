@@ -1,11 +1,3 @@
-/**
- * @module types
- */
-
-/**
- * Description
- */
-
 // Vendor modules
 import {
   CellId,
@@ -70,7 +62,7 @@ export interface DocumentRecordProps {
   // right now it's keypaths and then it looks like it's able to handle any per
   // cell transient data that will be deleted when the kernel is restarted
   cellPagers: any;
-  cellPrompts: Immutable.Map<CellId, InputRequestMessage>;
+  cellPrompts: Immutable.Map<CellId, Immutable.List<InputRequestMessage>>;
   editorFocused?: CellId | null;
   cellFocused?: CellId | null;
   copied: ImmutableCell | null;

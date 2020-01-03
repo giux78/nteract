@@ -1,4 +1,4 @@
-import { AnserJsonEntry, ansiToJson } from "anser";
+import Anser, { AnserJsonEntry } from "anser";
 import { escapeCarriageReturn } from "escape-carriage";
 import * as React from "react";
 
@@ -13,7 +13,7 @@ const LINK_REGEX = /(https?:\/\/(?:www\.|(?!www))[^\s\.]+\.[^\s]{2,}|www\.[^\s]+
  */
 function ansiToJSON(input: string, use_classes = false) {
   input = escapeCarriageReturn(input);
-  return ansiToJson(input, {
+  return Anser.ansiToJson(input, {
     json: true,
     remove_empty: true,
     use_classes
@@ -87,11 +87,12 @@ function convertBundleIntoReact(
     );
   }
 
-  const words = bundle.content.split(" ").reduce(
+  const words = bundle.content.split(/(\s+)/).reduce(
     (words: React.ReactNode[], word: string, index: number) => {
-      // If this isn't the first word, re-add the space removed from split.
-      if (index !== 0) {
-        words.push(" ");
+      // If this is a separator, re-add the space removed from split.
+      if (index % 2 === 1) {
+        words.push(word);
+        return words;
       }
 
       // If  this isn't a link, just return the word as-is.

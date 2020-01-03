@@ -92,12 +92,7 @@ const LoginDialog: FunctionComponent<ILoginDialogProps> = ({
               >
                 Sign up
               </AnchorButton>
-              <Button
-                large
-                intent={PRIMARY}
-                icon={LOG_IN}
-                type="submit"
-              >
+              <Button large intent={PRIMARY} icon={LOG_IN} type="submit">
                 Log in
               </Button>
             </div>

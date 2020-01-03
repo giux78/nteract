@@ -28,7 +28,7 @@ import {
   first,
   mergeMap,
   skipUntil,
-  takeUntil
+  takeUntil, tap
 } from "rxjs/operators";
 
 import {
@@ -56,7 +56,6 @@ const argv = yargs()
   .example("nteract notebook1.ipynb notebook2.ipynb", "Open notebooks")
   .example("nteract --kernel javascript", "Launch a kernel")
   .describe("kernel", "Launch a kernel")
-  .default("kernel", "python3")
   .alias("k", "kernel")
   .alias("v", "version")
   .alias("h", "help")
@@ -66,12 +65,10 @@ const argv = yargs()
 
 log.info("args", argv);
 
-const notebooks = argv._.filter(x => /(.ipynb)$/.test(x)).filter(x =>
-  existsSync(resolve(x))
-);
+const notebooks = argv._.filter(x => /(.ipynb)$/.test(x));
 
 ipc.on("new-kernel", (_event: any, k: KernelspecInfo) => {
-  launchNewNotebook(k);
+  launchNewNotebook(null, k);
 });
 
 ipc.on("open-notebook", (_event: any, filename: string) => {
@@ -100,6 +97,10 @@ const fullAppReady$ = zip(electronReady$, prepareEnv).pipe(first());
 const jupyterConfigDir = join(app.getPath("home"), ".jupyter");
 const nteractConfigFilename = join(jupyterConfigDir, "nteract.json");
 
+const CONFIG = {
+  defaultKernel: "python3",
+};
+
 const prepJupyterObservable = prepareEnv.pipe(
   mergeMap(() =>
     // Create all the directories we need in parallel
@@ -125,7 +126,12 @@ const prepJupyterObservable = prepareEnv.pipe(
         throw err;
       })
     )
-  )
+  ),
+  tap(file => {
+    if(file) {
+      Object.assign(CONFIG, JSON.parse(file.toString("utf8")));
+    }
+  }),
 );
 
 const kernelSpecsPromise = prepJupyterObservable
@@ -272,31 +278,44 @@ openFile$
     // Form an array of open-file events from before app-ready // Should only be the first
     // Now we can choose whether to open the default notebook
     // based on if arguments went through argv or through open-file events
-    if (notebooks.length <= 0 && buffer.length <= 0) {
-      log.info("launching an empty notebook by default");
+
+    const cliLaunchNewNotebook = (filepath: string | null) => {
       kernelSpecsPromise.then((specs: Kernelspecs) => {
         let kernel: string;
+        const passedKernel = argv.kernel as string;
+        const defaultKernel = CONFIG.defaultKernel;
 
-        if (argv.kernel in specs) {
-          kernel = argv.kernel;
-        } else if ("python2" in specs) {
-          kernel = "python2";
+        if (passedKernel && passedKernel in specs) {
+          kernel = passedKernel;
+        } else if (defaultKernel && defaultKernel in specs) {
+          kernel = defaultKernel;
         } else {
           const specList = Object.keys(specs);
           specList.sort();
           kernel = specList[0];
         }
+
         if (kernel && specs[kernel]) {
-          launchNewNotebook(specs[kernel]);
+          launchNewNotebook(filepath, specs[kernel]);
         }
       });
+    };
+
+    if (notebooks.length <= 0 && buffer.length <= 0) {
+      log.info("launching an empty notebook by default");
+      cliLaunchNewNotebook(null);
     } else {
       notebooks.forEach(f => {
-        try {
-          launch(resolve(f));
-        } catch (e) {
-          log.error(e);
-          console.error(e);
+        if (existsSync(resolve(f))) {
+          try {
+            launch(resolve(f));
+          } catch (e) {
+            log.error(e);
+            console.error(e);
+          }
+        } else {
+          log.info(`notebook ${f} not found, launching as empty notebook`);
+          cliLaunchNewNotebook(f);
         }
       });
     }

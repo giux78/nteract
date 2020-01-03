@@ -1,7 +1,3 @@
-/**
- * @module commutable
- */
-
 // Due to the on-disk format needing to be written out in an explicit order,
 // we disable ordering for this file
 // tslint:disable:object-literal-sort-keys.
@@ -306,9 +302,13 @@ export function toJS(immnb: ImmutableNotebook): NotebookV4 {
     [key: string]: ImmutableCell;
   } = plainNotebook.cellMap.toObject();
 
-  const cells = plainCellOrder.map((cellId: string) =>
-    cellToJS(plainCellMap[cellId])
-  );
+  const cells = plainCellOrder
+    .filter((cellId: string) =>
+      !plainCellMap[cellId].getIn(["metadata", "nteract", "transient", "deleting"])
+    )
+    .map((cellId: string) =>
+      cellToJS(plainCellMap[cellId])
+    );
 
   return {
     cells,

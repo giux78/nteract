@@ -30,7 +30,7 @@ module.exports = {
   sections: [
     {
       name: "Introduction",
-      content: "doc/components.md"
+      content: "styleguide-components/intro.md"
     },
     {
       name: "@nteract/presentational-components",
@@ -113,7 +113,11 @@ module.exports = {
             projectReferences: true,
             transpileOnly: true
           }
-        }
+        },
+        {
+          test: /\.css$/,
+          use: ['style-loader', 'css-loader']
+        },
       ]
     }
   }

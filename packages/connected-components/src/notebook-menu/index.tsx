@@ -5,15 +5,17 @@ import {
   AppState,
   ContentRef,
   HostRecord,
+  KernelRef,
   KernelspecsByRefRecordProps,
   KernelspecsRef
 } from "@nteract/types";
 import { RecordOf } from "immutable";
 import { connect } from "react-redux";
+import { Dispatch } from "redux";
 
 // Local modules
 import { MODAL_TYPES } from "../modal-controller";
-import PureNotebookMenu from "./PureNotebookMenu"
+import PureNotebookMenu from "./PureNotebookMenu";
 
 function makeMapStateToProps(
   initialState: AppState,
@@ -64,10 +66,10 @@ function makeMapStateToProps(
 }
 
 function makeMapDispatchToProps(
-  initialState: AppState,
+  initialDispatch: Dispatch,
   initialProps: { contentRef: ContentRef }
 ) {
-  const mapDispatchToProps = (dispatch: any) => ({
+  const mapDispatchToProps = (dispatch: Dispatch) => ({
     onPublish: (payload: { contentRef: string }) =>
       dispatch(actions.publishToBookstore(payload)),
     toggleNotebookHeaderEditor: (payload: { contentRef: string }) =>
@@ -135,8 +137,10 @@ function makeMapDispatchToProps(
       ),
     killKernel: (payload: { restarting: boolean; kernelRef?: string | null }) =>
       dispatch(actions.killKernel(payload)),
-    interruptKernel: (payload: { kernelRef?: string | null }) =>
-      dispatch(actions.interruptKernel(payload))
+    interruptKernel: (payload: {
+      kernelRef?: KernelRef | null;
+      contentRef?: ContentRef | null;
+    }) => dispatch(actions.interruptKernel(payload))
   });
   return mapDispatchToProps;
 }

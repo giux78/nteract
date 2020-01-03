@@ -1,6 +1,3 @@
-/**
- * @module actions
- */
 import { ContentRef, KernelRef, KernelspecInfo } from "@nteract/types";
 
 export const TOGGLE_HEADER_EDITOR = "CORE/TOGGLE_HEADER_EDITOR";
@@ -160,6 +157,7 @@ export const NEW_NOTEBOOK = "NEW_NOTEBOOK";
 export interface NewNotebook {
   type: "NEW_NOTEBOOK";
   payload: {
+    filepath: string | null;
     cwd: string;
     kernelSpec: KernelspecInfo;
     kernelRef: KernelRef;
@@ -175,3 +173,20 @@ export interface UpdateFileText {
     contentRef: ContentRef;
   };
 }
+
+export const CLOSE_NOTEBOOK = "CLOSE_NOTEBOOK";
+export interface CloseNotebook {
+  type: "CLOSE_NOTEBOOK";
+  payload: {
+    contentRef: ContentRef;
+  };
+}
+
+export const DISPOSE_CONTENT = "DISPOSE_CONTENT";
+export interface DisposeContent {
+  type: "DISPOSE_CONTENT";
+  payload: {
+    contentRef: ContentRef;
+  }
+}
+

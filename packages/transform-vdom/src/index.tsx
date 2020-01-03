@@ -1,10 +1,10 @@
-import { cloneDeep } from "lodash";
+import cloneDeep from "lodash.clonedeep";
 import * as React from "react";
 
 import {
   Attributes,
-  SerializedEvent,
   objectToReactElement,
+  SerializedEvent,
   VDOMEl
 } from "./object-to-react";
 

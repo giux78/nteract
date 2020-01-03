@@ -1,75 +1,21 @@
-/**
- * @module epics
- */
-import { createMessage, ofMessageType } from "@nteract/messaging";
-import { ofType } from "redux-observable";
+import { ofMessageType } from "@nteract/messaging";
+import { ofType, StateObservable } from "redux-observable";
 import { ActionsObservable } from "redux-observable";
 import { merge } from "rxjs";
-import { map, retry, switchMap, takeUntil } from "rxjs/operators";
+import { map, switchMap, takeUntil, filter } from "rxjs/operators";
 
 import {
   commMessageAction,
   commOpenAction,
   KILL_KERNEL_SUCCESSFUL,
   LAUNCH_KERNEL_SUCCESSFUL,
-  NewKernelAction
+  NewKernelAction,
+  KillKernelSuccessful
 } from "@nteract/actions";
+import * as selectors from "@nteract/selectors";
+import { AppState } from "@nteract/types";
 
-/**
- * creates a comm open message
- * @param  {string} comm_id       uuid
- * @param  {string} target_name   comm handler
- * @param  {any} data             up to the target handler
- * @param  {string} target_module [Optional] used to select a module that is responsible for handling the target_name
- * @return {jmp.Message}          Message ready to send on the shell channel
- */
-export function createCommOpenMessage(
-  comm_id: string,
-  target_name: string,
-  data: any = {},
-  target_module: string
-) {
-  const msg = createMessage("comm_open", {
-    content: { comm_id, target_name, data }
-  });
-  if (target_module) {
-    msg.content.target_module = target_module;
-  }
-  return msg;
-}
-
-/**
- * creates a comm message for sending to a kernel
- * @param  {string}     comm_id    unique identifier for the comm
- * @param  {Object}     data       any data to send for the comm
- * @param  {Uint8Array} buffers    arbitrary binary data to send on the comm
- * @return {jmp.Message}           jupyter message for comm_msg
- */
-export function createCommMessage(
-  comm_id: string,
-  data: any = {},
-  buffers: Uint8Array = new Uint8Array([])
-) {
-  return createMessage("comm_msg", { content: { comm_id, data }, buffers });
-}
-
-/**
- * creates a comm close message for sending to a kernel
- * @param  {Object} parent_header    header from a parent jupyter message
- * @param  {string}     comm_id      unique identifier for the comm
- * @param  {Object}     data         any data to send for the comm
- * @return {jmp.Message}             jupyter message for comm_msg
- */
-export function createCommCloseMessage(
-  parent_header: any,
-  comm_id: string,
-  data: any = {}
-) {
-  return createMessage("comm_close", {
-    content: { comm_id, data },
-    parent_header
-  });
-}
+import { ipywidgetsModel$ } from "./ipywidgets";
 
 /**
  * An epic that emits comm actions from the backend kernel
@@ -77,27 +23,61 @@ export function createCommCloseMessage(
  * @param  {redux.Store} store   the redux store
  * @return {ActionsObservable}         Comm actions
  */
-export const commListenEpic = (action$: ActionsObservable<NewKernelAction>) =>
+export const commListenEpic = (
+  action$: ActionsObservable<NewKernelAction | KillKernelSuccessful>,
+  state$: StateObservable<AppState>
+) =>
   action$.pipe(
     // A LAUNCH_KERNEL_SUCCESSFUL action indicates we have a new channel
     ofType(LAUNCH_KERNEL_SUCCESSFUL),
-    switchMap((action: NewKernelAction) => {
+    switchMap((action: NewKernelAction | KillKernelSuccessful) => {
       const {
-        payload: { kernel }
-      } = action;
+        payload: { kernel, contentRef }
+      } = action as NewKernelAction;
+
+      /**
+       * We need the model of the currently loaded notebook so we can
+       * determine what notebook to render the output of the widget onto.
+       */
+      const model = selectors.model(state$.value, { contentRef });
+
+      const kernelRef = selectors.kernelRefByContentRef(state$.value, {
+        contentRef
+      });
+
       // Listen on the comms channel until KILL_KERNEL_SUCCESSFUL is emitted
       const commOpenAction$ = kernel.channels.pipe(
         ofMessageType("comm_open"),
         map(commOpenAction),
-        takeUntil(action$.pipe(ofType(KILL_KERNEL_SUCCESSFUL)))
+        takeUntil(
+          action$.pipe(
+            ofType(KILL_KERNEL_SUCCESSFUL),
+            filter(
+              (action: KillKernelSuccessful | NewKernelAction) =>
+                action.payload.kernelRef === kernelRef
+            )
+          )
+        )
       );
 
       const commMessageAction$ = kernel.channels.pipe(
         ofMessageType("comm_msg"),
         map(commMessageAction),
-        takeUntil(action$.pipe(ofType(KILL_KERNEL_SUCCESSFUL)))
+        takeUntil(
+          action$.pipe(
+            ofType(KILL_KERNEL_SUCCESSFUL),
+            filter(
+              (action: KillKernelSuccessful | NewKernelAction) =>
+                action.payload.kernelRef === kernelRef
+            )
+          )
+        )
       );
 
-      return merge(commOpenAction$, commMessageAction$);
+      return merge(
+        ipywidgetsModel$(kernel, model, contentRef),
+        commOpenAction$,
+        commMessageAction$
+      );
     })
   );

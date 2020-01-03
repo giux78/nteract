@@ -1,5 +1,7 @@
 import * as fs from "fs";
 
+// @ts-ignore
+import filewatcher from "filewatcher";
 import { bindNodeCallback, Observable } from "rxjs";
 import { mergeMap } from "rxjs/operators";
 
@@ -47,7 +49,7 @@ export const mkdirpObservable = bindNodeCallback(mkdirp);
 export function readdirObservable(
   path: string,
   options?: { encoding?: string | null } | string | null
-) {
+): Observable<string[] | Buffer[]> {
   return new Observable(observer => {
     const cb = (err: Error | null = null, files: string[] | Buffer[]) => {
       if (err) {
@@ -70,3 +72,19 @@ export function readdirObservable(
 export const statObservable: (
   path: string
 ) => Observable<fs.Stats> = bindNodeCallback(fs.stat);
+
+/**
+ * Watches a file for change
+ */
+export function watchFileObservable(
+  path: string,
+): Observable<{path: string}> {
+  return new Observable(observer => {
+    const watcher = filewatcher({ persistent: false });
+    watcher.add(path);
+    watcher.on("change",
+      (filepath: string) =>
+        observer.next({path: filepath})
+    );
+  });
+}

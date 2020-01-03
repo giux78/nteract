@@ -1,5 +1,5 @@
 /* eslint class-methods-use-this: 0 */
-import { cloneDeep } from "lodash";
+import cloneDeep from "lodash.clonedeep";
 import React from "react";
 
 interface Props {
@@ -60,7 +60,7 @@ export class PlotlyTransform extends React.Component<Props> {
   componentDidMount(): void {
     // Handle case of either string to be `JSON.parse`d or pure object
     const figure = this.getFigure();
-    this.Plotly = require("@nteract/plotly");
+    this.Plotly = require("plotly.js-dist");
     this.Plotly.newPlot(this.plotDiv, figure.data, figure.layout);
   }
 

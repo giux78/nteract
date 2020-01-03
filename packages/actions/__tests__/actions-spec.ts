@@ -74,6 +74,50 @@ describe("unhideAll", () => {
         contentRef
       }
     });
+
+    expect(
+      actions.unhideAll({ outputHidden: true, inputHidden: true, contentRef })
+    ).toEqual({
+      type: actionTypes.UNHIDE_ALL,
+      payload: {
+        outputHidden: true,
+        inputHidden: true,
+        contentRef
+      }
+    });
+
+    expect(
+      actions.unhideAll({ outputHidden: false, contentRef })
+    ).toEqual({
+      type: actionTypes.UNHIDE_ALL,
+      payload: {
+        outputHidden: false,
+        inputHidden: undefined,
+        contentRef
+      }
+    });
+
+    expect(
+      actions.unhideAll({ inputHidden: false, contentRef })
+    ).toEqual({
+      type: actionTypes.UNHIDE_ALL,
+      payload: {
+        outputHidden: undefined,
+        inputHidden: false,
+        contentRef
+      }
+    });
+
+    expect(
+      actions.unhideAll({ contentRef })
+    ).toEqual({
+      type: actionTypes.UNHIDE_ALL,
+      payload: {
+        outputHidden: undefined,
+        inputHidden: undefined,
+        contentRef
+      }
+    });
   });
 });
 
@@ -662,6 +706,30 @@ describe("save", () => {
     expect(actions.saveFulfilled({ contentRef, model })).toEqual({
       type: actionTypes.SAVE_FULFILLED,
       payload: { contentRef, model: { fake: true } }
+    });
+  });
+
+  test("creates a CLOSE_NOTEBOOK action", () => {
+    const contentRef = createContentRef();
+    expect(actions.closeNotebook({ contentRef })).toEqual({
+      type: actionTypes.CLOSE_NOTEBOOK,
+      payload: { contentRef }
+    });
+  });
+
+  test("creates a DISPOSE_CONTENT action", () => {
+    const contentRef = createContentRef();
+    expect(actions.disposeContent({ contentRef })).toEqual({
+      type: actionTypes.DISPOSE_CONTENT,
+      payload: { contentRef }
+    });
+  });
+
+  test("creates a DISPOSE_KERNEL action", () => {
+    const kernelRef = createKernelRef();
+    expect(actions.disposeKernel({ kernelRef })).toEqual({
+      type: actionTypes.DISPOSE_KERNEL,
+      payload: { kernelRef }
     });
   });
 });

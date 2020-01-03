@@ -1,6 +1,3 @@
-/**
- * @module actions
- */
 import { CellId, CellType, JSONObject } from "@nteract/commutable";
 import { ContentRef } from "@nteract/types";
 
@@ -41,6 +38,24 @@ export interface MoveCell {
 export const DELETE_CELL = "DELETE_CELL";
 export interface DeleteCell {
   type: "DELETE_CELL";
+  payload: {
+    id?: CellId;
+    contentRef: ContentRef;
+  };
+}
+
+export const MARK_CELL_AS_DELETING = "MARK_CELL_AS_DELETING";
+export interface MarkCellAsDeleting {
+  type: "MARK_CELL_AS_DELETING";
+  payload: {
+    id?: CellId;
+    contentRef: ContentRef;
+  };
+}
+
+export const UNMARK_CELL_AS_DELETING = "UNMARK_CELL_AS_DELETING";
+export interface UnmarkCellAsDeleting {
+  type: "UNMARK_CELL_AS_DELETING";
   payload: {
     id?: CellId;
     contentRef: ContentRef;
@@ -114,8 +129,8 @@ export const UNHIDE_ALL = "UNHIDE_ALL";
 export interface UnhideAll {
   type: "UNHIDE_ALL";
   payload: {
-    inputHidden: boolean;
-    outputHidden: boolean;
+    inputHidden?: boolean;
+    outputHidden?: boolean;
     contentRef: ContentRef;
   };
 }
@@ -274,5 +289,6 @@ export interface SendInputReply {
   type: "SEND_INPUT_REPLY";
   payload: {
     value: string;
+    contentRef: ContentRef;
   };
 }

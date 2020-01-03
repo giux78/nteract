@@ -33,15 +33,14 @@ const ThemedLogo = ({
     marginRight: "20px",
     color: "black"
   },
-  subheadingStyle = { marginBottom: 0,
-  color : "black"
-  }
+  subheadingStyle = { marginBottom: 0, color: "black" }
 }) => (
   <div style={wrapperStyle}>
     <AxaWideLogo />
     <H3 className={Classes.DARK} style={headingStyle}>
       AXA Explorer
-      <H6 style={subheadingStyle}>forked from{" "}
+      <H6 style={subheadingStyle}>
+        forked from{" "}
         <a href="https://github.com/nteract/nteract">nteract/nteract</a>
       </H6>
     </H3>

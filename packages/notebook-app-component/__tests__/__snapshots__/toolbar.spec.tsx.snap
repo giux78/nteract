@@ -15,19 +15,19 @@ exports[`Toolbar View should be able to render a toolbar 1`] = `
           "componentStyle": ComponentStyle {
             "componentId": "sc-ifAKCX",
             "isStatic": false,
-            "lastClassName": "jlbNeh",
+            "lastClassName": "iXeJZQ",
             "rules": Array [
               "
   z-index: 9;
-  position: absolute;
-  top: 0px;
-  right: 0px;
+  position: sticky; /* keep visible with large code cells that need scrolling */
+  float: right;
+  top: 0;
+  right: 0;
   height: 34px;
-
-  /* Set the left padding to 50px to give users extra room to move their
-              mouse to the toolbar without causing the cell to go out of focus and thus
-              hide the toolbar before they get there. */
-  padding: 0px 0px 0px 50px;
+  margin: 0 0 0 -100%; /* allow code cell to completely overlap (underlap?) */
+  padding: 0 0 0 50px; /* give users extra room to move their mouse to the
+                          toolbar without causing the cell to go out of
+                          focus/hide the toolbar before they get there */
 ",
             ],
           },
@@ -44,7 +44,7 @@ exports[`Toolbar View should be able to render a toolbar 1`] = `
       forwardedRef={null}
     >
       <div
-        className="sc-ifAKCX jlbNeh"
+        className="sc-ifAKCX iXeJZQ"
         style={
           Object {
             "display": "none",
@@ -59,8 +59,8 @@ exports[`Toolbar View should be able to render a toolbar 1`] = `
                 "attrs": Array [],
                 "componentStyle": ComponentStyle {
                   "componentId": "sc-bxivhb",
-                  "isStatic": true,
-                  "lastClassName": "igjdMy",
+                  "isStatic": false,
+                  "lastClassName": "grkuc",
                   "rules": Array [
                     "
   background-color: var(--theme-cell-toolbar-bg);
@@ -76,7 +76,7 @@ exports[`Toolbar View should be able to render a toolbar 1`] = `
   }
 
   @media print {
-    display: none ;
+    display: none;
   }
 
   button {
@@ -129,7 +129,7 @@ exports[`Toolbar View should be able to render a toolbar 1`] = `
             forwardedRef={null}
           >
             <div
-              className="sc-bxivhb igjdMy"
+              className="sc-bxivhb grkuc"
             >
               <button
                 className="executeButton"
@@ -172,8 +172,12 @@ exports[`Toolbar View should be able to render a toolbar 1`] = `
                   </Component>
                 </span>
               </button>
-              <DropdownMenu>
-                <DropdownDiv>
+              <DropdownMenu
+                onDisplayChanged={[Function]}
+              >
+                <DropdownDiv
+                  onKeyUp={[Function]}
+                >
                   <StyledComponent
                     forwardedComponent={
                       Object {
@@ -181,7 +185,7 @@ exports[`Toolbar View should be able to render a toolbar 1`] = `
                         "attrs": Array [],
                         "componentStyle": ComponentStyle {
                           "componentId": "sc-bdVaJa",
-                          "isStatic": true,
+                          "isStatic": false,
                           "lastClassName": "igpjjl",
                           "rules": Array [
                             "
@@ -201,9 +205,11 @@ exports[`Toolbar View should be able to render a toolbar 1`] = `
                       }
                     }
                     forwardedRef={null}
+                    onKeyUp={[Function]}
                   >
                     <div
                       className="sc-bdVaJa igpjjl"
+                      onKeyUp={[Function]}
                     >
                       <DropdownTrigger
                         key=".0"
@@ -219,7 +225,7 @@ exports[`Toolbar View should be able to render a toolbar 1`] = `
                                 "attrs": Array [],
                                 "componentStyle": ComponentStyle {
                                   "componentId": "sc-bwzfXH",
-                                  "isStatic": true,
+                                  "isStatic": false,
                                   "lastClassName": "iaRngl",
                                   "rules": Array [
                                     "
@@ -247,6 +253,7 @@ exports[`Toolbar View should be able to render a toolbar 1`] = `
                               onClick={[Function]}
                             >
                               <button
+                                aria-expanded={false}
                                 title="show additional actions"
                               >
                                 <span
@@ -362,19 +369,19 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
           "componentStyle": ComponentStyle {
             "componentId": "sc-ifAKCX",
             "isStatic": false,
-            "lastClassName": "jlbNeh",
+            "lastClassName": "iXeJZQ",
             "rules": Array [
               "
   z-index: 9;
-  position: absolute;
-  top: 0px;
-  right: 0px;
+  position: sticky; /* keep visible with large code cells that need scrolling */
+  float: right;
+  top: 0;
+  right: 0;
   height: 34px;
-
-  /* Set the left padding to 50px to give users extra room to move their
-              mouse to the toolbar without causing the cell to go out of focus and thus
-              hide the toolbar before they get there. */
-  padding: 0px 0px 0px 50px;
+  margin: 0 0 0 -100%; /* allow code cell to completely overlap (underlap?) */
+  padding: 0 0 0 50px; /* give users extra room to move their mouse to the
+                          toolbar without causing the cell to go out of
+                          focus/hide the toolbar before they get there */
 ",
             ],
           },
@@ -391,7 +398,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
       forwardedRef={null}
     >
       <div
-        className="sc-ifAKCX jlbNeh"
+        className="sc-ifAKCX iXeJZQ"
         style={
           Object {
             "display": "none",
@@ -406,8 +413,8 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                 "attrs": Array [],
                 "componentStyle": ComponentStyle {
                   "componentId": "sc-bxivhb",
-                  "isStatic": true,
-                  "lastClassName": "igjdMy",
+                  "isStatic": false,
+                  "lastClassName": "grkuc",
                   "rules": Array [
                     "
   background-color: var(--theme-cell-toolbar-bg);
@@ -423,7 +430,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
   }
 
   @media print {
-    display: none ;
+    display: none;
   }
 
   button {
@@ -476,7 +483,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
             forwardedRef={null}
           >
             <div
-              className="sc-bxivhb igjdMy"
+              className="sc-bxivhb grkuc"
             >
               <button
                 className="executeButton"
@@ -519,8 +526,12 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                   </Component>
                 </span>
               </button>
-              <DropdownMenu>
-                <DropdownDiv>
+              <DropdownMenu
+                onDisplayChanged={[Function]}
+              >
+                <DropdownDiv
+                  onKeyUp={[Function]}
+                >
                   <StyledComponent
                     forwardedComponent={
                       Object {
@@ -528,7 +539,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                         "attrs": Array [],
                         "componentStyle": ComponentStyle {
                           "componentId": "sc-bdVaJa",
-                          "isStatic": true,
+                          "isStatic": false,
                           "lastClassName": "igpjjl",
                           "rules": Array [
                             "
@@ -548,9 +559,11 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                       }
                     }
                     forwardedRef={null}
+                    onKeyUp={[Function]}
                   >
                     <div
                       className="sc-bdVaJa igpjjl"
+                      onKeyUp={[Function]}
                     >
                       <DropdownTrigger
                         key=".0"
@@ -566,7 +579,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                                 "attrs": Array [],
                                 "componentStyle": ComponentStyle {
                                   "componentId": "sc-bwzfXH",
-                                  "isStatic": true,
+                                  "isStatic": false,
                                   "lastClassName": "iaRngl",
                                   "rules": Array [
                                     "
@@ -594,6 +607,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                               onClick={[Function]}
                             >
                               <button
+                                aria-expanded={true}
                                 title="show additional actions"
                               >
                                 <span
@@ -640,6 +654,74 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                       <DropdownContent
                         key=".1"
                         onItemClick={[Function]}
+                        ulRef={
+                          Object {
+                            "current": <ul
+                              aria-label="dropdown-content"
+                              role="listbox"
+                            >
+                              <li
+                                aria-selected="false"
+                                class="clearOutput"
+                                role="option"
+                                tabindex="0"
+                              >
+                                <a>
+                                  Clear Cell Output
+                                </a>
+                              </li>
+                              <li
+                                aria-selected="false"
+                                class="inputVisibility"
+                                role="option"
+                                tabindex="0"
+                              >
+                                <a>
+                                  Toggle Input Visibility
+                                </a>
+                              </li>
+                              <li
+                                aria-selected="false"
+                                class="outputVisibility"
+                                role="option"
+                                tabindex="0"
+                              >
+                                <a>
+                                  Toggle Output Visibility
+                                </a>
+                              </li>
+                              <li
+                                aria-selected="false"
+                                class="outputExpanded"
+                                role="option"
+                                tabindex="0"
+                              >
+                                <a>
+                                  Toggle Expanded Output
+                                </a>
+                              </li>
+                              <li
+                                aria-selected="false"
+                                role="option"
+                                tabindex="0"
+                              >
+                                <a>
+                                  Toggle Parameter Cell
+                                </a>
+                              </li>
+                              <li
+                                aria-selected="false"
+                                class="changeType"
+                                role="option"
+                                tabindex="0"
+                              >
+                                <a>
+                                  Convert to Markdown Cell
+                                </a>
+                              </li>
+                            </ul>,
+                          }
+                        }
                       >
                         <DropdownContentDiv>
                           <StyledComponent
@@ -649,7 +731,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                                 "attrs": Array [],
                                 "componentStyle": ComponentStyle {
                                   "componentId": "sc-htpNat",
-                                  "isStatic": true,
+                                  "isStatic": false,
                                   "lastClassName": "juMQnP",
                                   "rules": Array [
                                     "
@@ -705,12 +787,16 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                             <div
                               className="sc-htpNat juMQnP"
                             >
-                              <ul>
+                              <ul
+                                aria-label="dropdown-content"
+                                role="listbox"
+                              >
                                 <li
                                   aria-selected="false"
                                   className="clearOutput"
                                   key=".0"
                                   onClick={[Function]}
+                                  onKeyUp={[Function]}
                                   role="option"
                                   tabIndex={0}
                                 >
@@ -723,6 +809,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                                   className="inputVisibility"
                                   key=".1"
                                   onClick={[Function]}
+                                  onKeyUp={[Function]}
                                   role="option"
                                   tabIndex={0}
                                 >
@@ -735,6 +822,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                                   className="outputVisibility"
                                   key=".2"
                                   onClick={[Function]}
+                                  onKeyUp={[Function]}
                                   role="option"
                                   tabIndex={0}
                                 >
@@ -747,6 +835,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                                   className="outputExpanded"
                                   key=".3"
                                   onClick={[Function]}
+                                  onKeyUp={[Function]}
                                   role="option"
                                   tabIndex={0}
                                 >
@@ -758,6 +847,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                                   aria-selected="false"
                                   key=".4"
                                   onClick={[Function]}
+                                  onKeyUp={[Function]}
                                   role="option"
                                   tabIndex={0}
                                 >
@@ -770,6 +860,7 @@ exports[`Toolbar View should be able to render a toolbar 2`] = `
                                   className="changeType"
                                   key=".5"
                                   onClick={[Function]}
+                                  onKeyUp={[Function]}
                                   role="option"
                                   tabIndex={0}
                                 >

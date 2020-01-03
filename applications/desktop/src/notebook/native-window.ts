@@ -136,7 +136,7 @@ export function createTitleFeed(
     kernelStatus$,
     (modified, fullpath, kernelStatus) => ({
       fullpath,
-      kernelStatus,
+      kernelStatus: kernelStatus ? kernelStatus.toString() : null,
       modified
     })
   ).pipe(

@@ -1,16 +1,13 @@
-/**
- * @module rx-jupyter
- */
 // Vendor modules
-import { BookstoreDataModel } from "@nteract/types";
+import { BookstoreDataModel, ServerConfig } from "@nteract/types";
 import { Observable } from "rxjs";
 import { ajax, AjaxResponse } from "rxjs/ajax";
 import urljoin from "url-join";
 
 // Local modules
-import { createAJAXSettings, ServerConfig } from "./base";
+import { createAJAXSettings } from "./base";
 
-const formURI = (path: string) => urljoin("/api/bookstore/published", path);
+const formURI = (path: string) => urljoin("/api/bookstore/publish", path);
 
 /**
  * Creates an AjaxObservable for publishing content to `Bookstore`

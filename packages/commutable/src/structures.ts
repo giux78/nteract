@@ -1,6 +1,3 @@
-/**
- * @module commutable
- */
 import uuid from "uuid/v4";
 
 import { CellId, createCellId } from "./primitives";
@@ -156,6 +153,50 @@ export function deleteCell(
   return notebook
     .removeIn(["cellMap", cellId])
     .update("cellOrder", cellOrder => cellOrder.filterNot(id => id === cellId));
+}
+
+/**
+ * Mark a cell as deleting; can be undone.
+ *
+ * @param notebook The notebook containing the cell.
+ * @param cellID The ID of the cell that will be deleted.
+ *
+ * @returns The modified notebook
+ */
+export function markCellDeleting(
+  notebook: ImmutableNotebook,
+  cellId: string
+): ImmutableNotebook {
+  return notebook.withMutations(nb =>
+    nb.setIn(
+      ["cellMap", cellId],
+      nb
+        .getIn(["cellMap", cellId])
+        .setIn(["metadata", "nteract", "transient", "deleting"], true)
+    )
+  );
+}
+
+/**
+ * Undo marking a cell as deleting.
+ *
+ * @param notebook The notebook containing the cell.
+ * @param cellID The ID of the cell that will not be deleted.
+ *
+ * @returns The modified notebook
+ */
+export function markCellNotDeleting(
+  notebook: ImmutableNotebook,
+  cellId: string
+): ImmutableNotebook {
+  return notebook.withMutations(nb =>
+    nb.setIn(
+      ["cellMap", cellId],
+      nb
+        .getIn(["cellMap", cellId])
+        .setIn(["metadata", "nteract", "transient", "deleting"], false)
+    )
+  );
 }
 
 /**

@@ -10,7 +10,6 @@ the user can search dataset from [PDND - DAF](https://dataportal.daf.teamdigital
 
 Once installed on you local machine, you can read a simple [tutorial](https://github.com/teamdigitale/nteract/blob/daf-develop/pdnd-tutorials/pdnd-nteract-tutorial.md) for understanding the basic functionalities implemented. In the next releases we will provide more functionalities and tutorials. If you want to contribute with only suggestions use this repo, opening issues and following our [project](https://github.com/teamdigitale/nteract/projects) and [milestone](https://github.com/teamdigitale/nteract/milestones).
 
-
 - [Video Tutorial](https://www.youtube.com/watch?v=nlZnYcz66YE)
 
 ## Getting Started
@@ -47,7 +46,7 @@ and open your browser at [http://localhost:8888]. If you are asked the token pas
 
 ### Install for data analyst
 
-If you are a data scientist we have realeased  [pdnd-open-notebooks](https://github.com/teamdigitale/pdnd-open-notebooks) repository based on this work on nteract. It provides a ready to use datascience Docker with libraries for python, R and julia. 
+If you are a data scientist we have realeased [pdnd-open-notebooks](https://github.com/teamdigitale/pdnd-open-notebooks) repository based on this work on nteract. It provides a ready to use datascience Docker with libraries for python, R and julia.
 
 Otherwise, you can use this repo as your favorite tool for anlysing Italian public dataset you can follow these steps:
 
@@ -72,7 +71,7 @@ jupyter nteract
 
 If you want to contribute to the project, we suggest to follow the contrubuting guidelines of [nteract](https://nteract.io). We have public milestones and [project](https://github.com/teamdigitale/nteract/projects) on github for looking at our current work. Nteract is build using typescript react redux rx-js and is a very active project. If you are willing to work on such technolgies can be a really good start and we are very open to create a community around our integration.
 
-Requires [Node.js](https://docs.npmjs.com/getting-started/installing-node), [yarn](https://yarnpkg.com/lang/en/docs/install/), [lerna](https://lernajs.io/) python 3 and pip on python 3. 
+Requires [Node.js](https://docs.npmjs.com/getting-started/installing-node), [yarn](https://yarnpkg.com/lang/en/docs/install/), [lerna](https://lernajs.io/) python 3 and pip on python 3.
 
 #### MacOS
 
@@ -90,6 +89,7 @@ jupyter nteract --dev
 ```
 
 #### Ubuntu or Debian
+
 ```
 git clone git@github.com:teamdigitale/daf-nteract.git
 cd nteract
@@ -113,6 +113,7 @@ jupyter nteract --dev
 ```
 
 #### Windows
+
 If you are on Windows 10, you can activate Ubuntu on the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/learn/modules/get-started-with-windows-subsystem-for-linux/) and follow the same steps as above.
 
 Almost the main things developed are inside the [pdnd-nteract-packages](https://github.com/teamdigitale/nteract/tree/daf-develop/packages/pdnd-nteract-packages)

@@ -1,5 +1,6 @@
 import { Cell } from "./components/cell";
 import { Cells } from "./components/cells";
+import Error from "./components/error";
 import { Input } from "./components/input";
 import { Outputs } from "./components/outputs";
 import { Pagers } from "./components/pagers";
@@ -8,4 +9,14 @@ import { Source } from "./components/source";
 
 export * from "./styles";
 
-export { Input, Outputs, Pagers, Prompt, PromptBuffer, Source, Cell, Cells };
+export {
+  Input,
+  Outputs,
+  Pagers,
+  Prompt,
+  PromptBuffer,
+  Source,
+  Cell,
+  Cells,
+  Error
+};
