@@ -25,7 +25,7 @@ RUN npm install --global lerna
 
 #COPY . /nteract
 
-RUN git clone -b dev  https://github.com/teamdigitale/nteract.git
+RUN git clone -b dev  https://github.com/giux78/nteract.git
 
 WORKDIR /nteract
 
@@ -36,6 +36,9 @@ RUN cd applications/jupyter-extension && \
     jupyter serverextension enable nteract_on_jupyter && \
     lerna run build:asap --scope nteract-on-jupyter --stream
 
+USER root 
+
 EXPOSE 8888 
 
 CMD ["jupyter", "nteract","--ip=0.0.0.0", "--allow-root"]
+#CMD ["jupyter", "nteract","--dev", "--ip=0.0.0.0", "--allow-root"]

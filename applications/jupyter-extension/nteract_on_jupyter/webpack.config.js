@@ -52,6 +52,10 @@ module.exports = {
         use: "file-loader"
       },
       {
+        test: /\.ttf$/,
+        use: ["file-loader"]
+      },
+      {
         test: /\.tsx?$/,
         use: [
           {
@@ -69,7 +73,7 @@ module.exports = {
   },
   resolve: {
     mainFields: ["nteractDesktop", "module", "main"],
-    extensions: [".ts", ".tsx", ".js"],
+    extensions: [".ts", ".tsx", ".js", ".ttf"],
     alias: configurator.mergeDefaultAliases()
   },
   plugins
