@@ -110,8 +110,10 @@ const makeDatasetSnippetByKernel = ({
   kernelName,
   metacatalog
 }): string => {
-  if (kernelName == "python3") {
-    const dataVar = metacatalog.dcatapit.name; // .substring(0, 20);
+  if (kernelName === "python3") {
+    const dataVar = metacatalog.dcatapit.name
+      .substring(0, 20)
+      .replace(/\s/g, "_"); // .substring(0, 20);
     return `url = "${datasetURI}?format=csv" 
 payload = ""
 headers = {'authorization': 'Bearer YOU_MUST_BE_LOGGEDIN'}

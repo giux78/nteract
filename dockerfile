@@ -38,6 +38,9 @@ RUN cd applications/jupyter-extension && \
 
 USER root 
 
+RUN mkdir /work
+WORKDIR /work
+
 EXPOSE 8888 
 
 CMD ["jupyter", "nteract","--ip=0.0.0.0", "--allow-root"]
