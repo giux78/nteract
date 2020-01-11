@@ -129,18 +129,26 @@ const commonURL = "https://api.daf.teamdigitale.it/";
 
 const requestUserObservable = ({ bearerToken, username }) =>
   ajax
-    .get(commonURL + "security-manager/v1/ipa/userbymail/" + username, {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Authorization: "Bearer " + bearerToken
-    })
+    .post(
+      "http://localhost:9303/auth-manager/v1/_validate",
+      {
+        clientId: "catalog",
+        token: bearerToken
+      },
+      {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      }
+    )
     .pipe(
       map(({ response }) => ({ bearerToken, ...response })),
       tap(() => {
         window.localStorage.setItem("bearerToken", bearerToken);
         window.localStorage.setItem("username", username);
       }),
-      map(mappedResponse => fulfillLogin(mappedResponse)),
+      map(mappedResponse =>
+        fulfillLogin({ bearerToken: bearerToken, uid: username })
+      ),
       catchError(error => of(rejectLogin()))
     );
 
@@ -154,11 +162,17 @@ const loginEpic = (action$, state$) =>
     concatMap(({ bearerToken, username }) =>
       bearerToken && username
         ? ajax
-            .get(commonURL + "sso-manager/secured/test", {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + bearerToken
-            })
+            .post(
+              "http://localhost:9303/auth-manager/v1/_validate",
+              {
+                clientId: "catalog",
+                token: bearerToken
+              },
+              {
+                Accept: "application/json",
+                "Content-Type": "application/json"
+              }
+            )
             .pipe(
               concatMap(() =>
                 ({ ...isUserLogged(state$.value) }.isUserLogged
@@ -180,11 +194,18 @@ const requestLoginEpic = action$ => {
     concatMap(({ payload: { username, password } }) => {
       const basicToken = btoa(username + ":" + password);
       return ajax
-        .get(commonURL + "security-manager/v1/token", {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: "Basic " + basicToken
-        })
+        .post(
+          "http://localhost:9303/auth-manager/v1/_login",
+          JSON.stringify({
+            clientId: "catalog",
+            email: username,
+            pwd: password
+          }),
+          {
+            Accept: "application/json",
+            "Content-Type": "application/json"
+          }
+        )
         .pipe(
           map(({ response }) => response),
           catchError(error => of(rejectLogin())),

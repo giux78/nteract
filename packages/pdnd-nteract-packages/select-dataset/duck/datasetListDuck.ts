@@ -11,7 +11,7 @@ import {
 import { ajax } from "rxjs/ajax";
 import { ofType } from "redux-observable";
 import { createSelector } from "reselect";
-
+import { tokensSelector } from "../../login/duck/loginDuck";
 import { SET_IN_CELL } from "@nteract/actions/src";
 import { DATASET_FULFILL } from "./selectedDatasetDuck";
 import { apiUriConfig } from "../../ducks";
@@ -120,7 +120,12 @@ const datasetListSelectors = {
 };
 
 // epics
-const datasetListEpic = action$ => action$.pipe(
+const datasetListEpic = (action$, state$) => {
+  // Not working but not time to investigate
+  // const state = state$.value;
+  // const { bearerToken } = { ...tokensSelector(state) };
+  const bearerToken = window.localStorage.getItem("bearerToken");
+  return action$.pipe(
     debounceTime(900),
     ofType(DATASETLIST_REQUEST),
     switchMap(({ payload }) =>
@@ -129,16 +134,17 @@ const datasetListEpic = action$ => action$.pipe(
           //BASE_API_URI + "dati-gov/v1/public/elasticsearch/search",
           "http://localhost:9301/catalog-manager/v1/api/catalog/_search",
           JSON.stringify({
-            filters:{
-              businessOwners:[],
-              categories:[],
-              statuses:[],
-              tags:[]
+            filters: {
+              businessOwners: [],
+              categories: [],
+              statuses: [],
+              tags: []
             },
             term: payload
-            }),
+          }),
           {
             Accept: "application/json",
+            Authorization: `Bearer ${bearerToken}`,
             "Content-Type": "application/json"
           }
         )
@@ -146,7 +152,7 @@ const datasetListEpic = action$ => action$.pipe(
           map(({ response }) =>
             response.entries
               //.filter(({ type }) => type === "catalog_test")
-              .map((obj) => ({
+              .map(obj => ({
                 dcatapit: obj
               }))
           ),
@@ -155,16 +161,13 @@ const datasetListEpic = action$ => action$.pipe(
         )
     )
   );
+};
 
 const resetDatasetListEpic = action$ =>
   action$.pipe(
     ofType(DATASET_FULFILL),
     concatMap(
-      action =>
-        action$.pipe(
-          ofType(SET_IN_CELL),
-          take(1)
-        ),
+      action => action$.pipe(ofType(SET_IN_CELL), take(1)),
       (outerVal, innerVal) => resetDatasetList()
     )
   );

@@ -41,7 +41,7 @@ class LoginLogoutButton extends PureComponent<
           intent={Intent.PRIMARY}
           rightIcon={isUserLogged ? LOG_OUT : LOG_IN}
           onClick={isUserLogged ? handleLogout : handleVisibility}
-          children={<b>{isUserLogged ? `${username} - Log out` : "Log in"}</b>}
+          children={<b>{isUserLogged ? `${username} - Logout` : "Login"}</b>}
         />
         <LoginDialogContainer
           isOpen={isOpen && !isUserLogged}

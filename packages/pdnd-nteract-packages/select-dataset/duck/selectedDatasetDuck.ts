@@ -236,7 +236,7 @@ const requestDatasetEpic = action$ =>
         map(() =>
           fulfillDataset({
             operational: {
-              logical_uri: payload.url
+              logical_uri: payload.physicalUrl
             },
             dcatapit: {
               name: payload.name
