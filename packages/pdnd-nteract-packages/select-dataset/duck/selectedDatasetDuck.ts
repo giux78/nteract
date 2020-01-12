@@ -111,8 +111,8 @@ const makeDatasetSnippetByKernel = ({
   metacatalog
 }): string => {
   if (kernelName === "python3") {
-    const dataVar = metacatalog.dcatapit.name; // .substring(0, 20);
-    return `url = "${datasetURI}?format=csv" 
+    const dataVar = metacatalog.dcatapit.name.split("crawled")[1];
+    return `url = "https://axadaf.s3-eu-west-1.amazonaws.com/${dataVar}" 
 payload = ""
 headers = {'authorization': 'Bearer YOU_MUST_BE_LOGGEDIN'}
 response = requests.request("GET", url, data=payload, headers=headers)
