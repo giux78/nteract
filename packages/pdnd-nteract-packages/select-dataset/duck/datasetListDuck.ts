@@ -122,14 +122,14 @@ const datasetListSelectors = {
 // epics
 const datasetListEpic = (action$, state$) => {
   // Not working but not time to investigate
-  // const state = state$.value;
-  // const { bearerToken } = { ...tokensSelector(state) };
-  const bearerToken = window.localStorage.getItem("bearerToken");
+  //const bearerToken = window.localStorage.getItem("bearerToken");
   return action$.pipe(
     debounceTime(900),
     ofType(DATASETLIST_REQUEST),
-    switchMap(({ payload }) =>
-      ajax
+    switchMap(({ payload }) => {
+      const state = state$.value;
+      const { bearerToken } = { ...tokensSelector(state) };
+      return ajax
         .post(
           //BASE_API_URI + "dati-gov/v1/public/elasticsearch/search",
           "http://localhost:9301/catalog-manager/v1/api/catalog/_search",
@@ -158,8 +158,8 @@ const datasetListEpic = (action$, state$) => {
           ),
           map(mappedResponse => fulfillDatasetList(mappedResponse)),
           catchError(error => of(rejectDatasetList(error)))
-        )
-    )
+        );
+    })
   );
 };
 
