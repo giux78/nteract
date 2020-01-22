@@ -57,7 +57,7 @@ const LoginDialog: FunctionComponent<ILoginDialogProps> = ({
                   intent={error ? DANGER : NONE}
                   leftIcon={USER}
                   type="email"
-                  placeholder="marco.rossi@teamdigitale.it"
+                  placeholder="marco.rossi@axa.it"
                   required
                   id="pdnd-login-email"
                   name="pdnd-login-email"
