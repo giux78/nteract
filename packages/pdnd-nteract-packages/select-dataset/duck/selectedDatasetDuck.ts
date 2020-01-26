@@ -110,7 +110,7 @@ const makeDatasetSnippetByKernel = ({
   kernelName,
   metacatalog
 }): string => {
-  if (kernelName === "python3") {
+  if (kernelName === "python3" || kernelName === "python3") {
     const dataVar = metacatalog.dcatapit.name
       .substring(0, 20)
       .replace(/\s/g, "_"); // .substring(0, 20);
